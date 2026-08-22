@@ -1,0 +1,159 @@
+{
+  "name": "wysiwyg-markdown-editor",
+  "displayName": "Markdown Word — WYSIWYG Markdown Editor",
+  "description": "Word 式所见即所得 Markdown 编辑器：两行图标化 Ribbon、可视化表格、图片粘贴落盘、Confluence 式斜杠菜单、代码块（含 PL/SQL）等宽字体",
+  "version": "1.2.0",
+  "publisher": "markdown-word",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "wysiwyg",
+    "word",
+    "rich text",
+    "table"
+  ],
+  "activationEvents": [
+    "onCustomEditor:wysiwygMarkdownEditor"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "wysiwygMarkdownEditor",
+        "displayName": "Markdown Word 编辑器",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "wysiwygMarkdown.toggleMode",
+        "title": "Markdown Word: 切换编辑模式 (WYSIWYG / 源码 / 分屏)"
+      },
+      {
+        "command": "wysiwygMarkdown.insertTable",
+        "title": "Markdown Word: 插入表格"
+      },
+      {
+        "command": "wysiwygMarkdown.insertImage",
+        "title": "Markdown Word: 插入图片"
+      },
+      {
+        "command": "wysiwygMarkdown.insertTOC",
+        "title": "Markdown Word: 插入当前日期时间"
+      },
+      {
+        "command": "wysiwygMarkdown.pageSetup",
+        "title": "Markdown Word: 页面设置…（纸张尺寸 / 背景色 / 条纹）"
+      }
+    ],
+    "configuration": {
+      "title": "Markdown Word",
+      "properties": {
+        "markdownWord.defaultMode": {
+          "type": "string",
+          "default": "wysiwyg",
+          "enum": [
+            "wysiwyg",
+            "source",
+            "split"
+          ],
+          "description": "打开文档时的默认编辑模式"
+        },
+        "markdownWord.image.saveFolder": {
+          "type": "string",
+          "default": "./images",
+          "description": "粘贴/拖拽图片的保存目录（相对文档，持久化保证：绝不引用临时地址）"
+        },
+        "markdownWord.image.fileNamePattern": {
+          "type": "string",
+          "default": "${docName}-${timestamp}",
+          "description": "图片文件名模板，可用 ${docName} 与 ${timestamp}"
+        },
+        "markdownWord.slashMenu.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用 Confluence 式斜杠命令菜单（/ 唤出）"
+        },
+        "markdownWord.table.defaultHeader": {
+          "type": "boolean",
+          "default": true,
+          "description": "新建表格默认包含表头行"
+        },
+        "markdownWord.page.size": {
+          "type": "string",
+          "default": "fit",
+          "enum": [
+            "fit",
+            "a3",
+            "a4",
+            "a5",
+            "b5",
+            "letter",
+            "legal",
+            "custom"
+          ],
+          "enumDescriptions": [
+            "适应屏幕（默认，窗口缩放自动跟随）",
+            "A3 · 1123px @96dpi",
+            "A4 · 794px",
+            "A5 · 559px",
+            "B5 · 667px",
+            "Letter · 816px",
+            "Legal · 816px",
+            "自定义宽度（配合 page.customWidth）"
+          ],
+          "description": "页面尺寸（仅视图层，切换后内容流式重排，不写入 Markdown）"
+        },
+        "markdownWord.page.customWidth": {
+          "type": "number",
+          "default": 794,
+          "minimum": 400,
+          "maximum": 1600,
+          "description": "自定义纸张宽度（px，仅 page.size = custom 时生效）"
+        },
+        "markdownWord.page.background": {
+          "type": "string",
+          "default": "auto",
+          "description": "页面背景色：auto（跟随主题）/ white / green（护眼绿）/ parchment（羊皮纸）/ iceblue（冰蓝）/ 自定义十六进制色（如 #C7EDCC）"
+        },
+        "markdownWord.page.pattern": {
+          "type": "string",
+          "default": "none",
+          "enum": [
+            "none",
+            "lines",
+            "grid",
+            "dots"
+          ],
+          "enumDescriptions": [
+            "无",
+            "横线（信纸，对齐行高）",
+            "方格",
+            "点阵"
+          ],
+          "description": "页面条纹（与背景色叠加渲染，仅影响显示，不写入 Markdown）"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node test/unit/run.js",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@vscode/vsce": "^2.19.0",
+    "jsdom": "^29.1.1"
+  }
+}

@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Word — 需求与 UI 设计文档（v1.0 目标规格）</title>
+<style>
+  :root{
+    --accent:#4f46e5; --accent-light:#eef2ff; --accent2:#7c3aed;
+    --bg:#f1f5f9; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --p0:#2563eb; --p1:#d97706; --p2:#94a3b8;
+    --ok:#059669;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:64px}
+  body{font-family:"Segoe UI","Microsoft YaHei","PingFang SC",-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.75;font-size:15px}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 28px}
+
+  /* ===== 文档头 ===== */
+  .hero{background:linear-gradient(135deg,#312e81 0%,#4f46e5 55%,#7c3aed 100%);color:#fff;padding:52px 0 44px}
+  .hero .kicker{font-size:13px;letter-spacing:.35em;opacity:.75;text-transform:uppercase}
+  .hero h1{font-size:36px;font-weight:700;margin:10px 0 8px;letter-spacing:.5px}
+  .hero .sub{font-size:16px;opacity:.88;max-width:760px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+  .chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:4px 14px;font-size:12.5px}
+
+  /* ===== 悬浮目录 ===== */
+  .toc{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;gap:2px;overflow-x:auto;padding:0 16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .toc a{padding:13px 13px;font-size:13.5px;color:#475569;white-space:nowrap;border-bottom:2.5px solid transparent;text-decoration:none}
+  .toc a:hover{color:var(--accent)}
+  .toc a.active{color:var(--accent);border-color:var(--accent);font-weight:600}
+
+  /* ===== 章节 ===== */
+  section{padding:52px 0 6px}
+  .sec-no{display:inline-grid;place-items:center;background:var(--accent);color:#fff;font-size:13px;font-weight:700;width:30px;height:30px;border-radius:8px;margin-right:10px;vertical-align:middle}
+  h2.sec{font-size:26px;font-weight:700;display:flex;align-items:center;margin-bottom:6px}
+  .sec-lead{color:var(--muted);margin-bottom:22px;max-width:900px}
+  h3.sub{font-size:18px;font-weight:700;margin:26px 0 12px;display:flex;align-items:center;gap:10px}
+  h3.sub::before{content:"";width:5px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 26px;box-shadow:0 1px 3px rgba(15,23,42,.05);margin-bottom:18px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  @media(max-width:960px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 9px;vertical-align:middle;white-space:nowrap}
+  .b-p0{background:#dbeafe;color:var(--p0);border:1px solid #bfdbfe}
+  .b-p1{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+  .b-p2{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+  .b-new{background:#fce7f3;color:#be185d;border:1px solid #fbcfe8}
+
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0}
+  .tbl th{background:#f8fafc;text-align:left;padding:9px 12px;border-bottom:2px solid var(--line);font-weight:600;color:#334155;white-space:nowrap}
+  .tbl td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl code{background:#f1f5f9;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-family:Consolas,"Courier New",monospace;font-size:12.5px;color:#334155}
+
+  kbd{background:#f8fafc;border:1px solid #cbd5e1;border-bottom-width:2.5px;border-radius:5px;padding:1px 7px;font-size:11.5px;font-family:inherit;color:#334155;white-space:nowrap}
+
+  ul.dots{list-style:none;padding-left:4px}
+  ul.dots li{padding-left:20px;position:relative;margin-bottom:8px}
+  ul.dots li::before{content:"";position:absolute;left:2px;top:10px;width:7px;height:7px;border-radius:50%;background:var(--accent);opacity:.75}
+  ul.dots li b{color:#1e293b}
+
+  /* ===== 功能卡片 ===== */
+  .feat{position:relative}
+  .feat-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .fno{background:#1e293b;color:#fff;font-size:11.5px;font-weight:700;border-radius:6px;padding:3px 8px;letter-spacing:.05em}
+  .feat-h h3{font-size:17px;font-weight:700}
+  .feat>p{color:#475569;margin-bottom:10px}
+  .accept{margin-top:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 14px;font-size:13px;color:#166534}
+  .accept b{color:#14532d}
+
+  /* ===== 图例 / 标注 ===== */
+  .tag{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 8px rgba(79,70,229,.5);border:2px solid #fff;z-index:5}
+  .legend{list-style:none;margin-top:14px;columns:2;gap:24px}
+  .legend li{display:flex;gap:10px;align-items:baseline;margin-bottom:6px;font-size:13.5px;color:#475569}
+  .legend .tag{position:static;flex:none;width:21px;height:21px;font-size:11.5px;transform:translateY(4px);box-shadow:none}
+  @media(max-width:760px){.legend{columns:1}}
+
+  .fig-title{font-size:13px;font-weight:700;color:#334155;margin:0 0 4px}
+  .fig-note{font-size:12.5px;color:var(--muted);margin-top:8px}
+
+  /* =========================================================
+     VS Code 编辑器 Mockup（亮色主题）
+     ========================================================= */
+  .vs{border:1px solid #c7d0dc;border-radius:12px;overflow:hidden;box-shadow:0 14px 40px rgba(15,23,42,.16);font-size:13px;background:#eceff4}
+  .vs-title{background:#e2e7ee;height:38px;display:flex;align-items:center;padding:0 14px;color:#5b6776;gap:10px;font-size:12.5px}
+  .dots3{display:flex;gap:6px;margin-right:8px}
+  .dots3 i{width:11px;height:11px;border-radius:50%;display:block}
+  .dots3 i:nth-child(1){background:#fc5f57}.dots3 i:nth-child(2){background:#fec200}.dots3 i:nth-child(3){background:#28c840}
+  .vs-body{display:flex;align-items:stretch}
+  .vs-act{width:46px;background:#e6eaf0;border-right:1px solid #d3dae3;display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:6px}
+  .vs-act .ai{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8899;font-size:16px}
+  .vs-act .ai.on{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(15,23,42,.12)}
+  .vs-side{width:212px;background:#f5f7fa;border-right:1px solid #d3dae3;padding:12px 12px 20px;flex:none}
+  .vs-side h5{font-size:11.5px;color:#8b95a5;letter-spacing:.12em;font-weight:600;margin-bottom:10px}
+  .vs-search{background:#fff;border:1px solid #d3dae3;border-radius:6px;height:26px;margin-bottom:12px;font-size:11.5px;color:#9aa4b2;display:flex;align-items:center;padding:0 8px}
+  .tree{font-size:12.5px;color:#3f4a59}
+  .tree .t{padding:3px 6px;border-radius:5px;display:flex;gap:6px;align-items:center;white-space:nowrap}
+  .tree .t:hover{background:#eaeef4}
+  .tree .t.on{background:#e3e9ff;color:var(--accent);font-weight:600}
+  .tree .lv1{padding-left:10px}.tree .lv2{padding-left:28px}
+  .tree .car{color:#98a2b0;font-size:10px;width:10px}
+  .vs-main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .vs-tabs{background:#e2e7ee;display:flex;padding:6px 8px 0;gap:2px;font-size:12.5px}
+  .vs-tab{padding:6px 16px;border-radius:8px 8px 0 0;color:#5b6776;display:flex;gap:8px;align-items:center}
+  .vs-tab.on{background:#fff;color:#1e293b;font-weight:600;box-shadow:0 -1px 3px rgba(15,23,42,.06)}
+  .vs-tab .x{color:#98a2b0}
+  .vs-status{background:#007acc;color:#fff;display:flex;align-items:center;gap:0;font-size:11.8px;padding:0 6px;height:26px}
+  .vs-status span{padding:0 10px;display:flex;align-items:center;height:100%}
+  .vs-status .grow{flex:1}
+  .vs-status .r:hover,.vs-status .l:hover{background:rgba(255,255,255,.15)}
+  .vs-edit{background:#f0f2f6;flex:1;padding:0 0 18px;min-height:120px}
+
+  /* ===== Ribbon ===== */
+  .ribbon{background:#fff;border-bottom:1px solid #dfe4ec}
+  .rtabs{display:flex;gap:2px;padding:6px 14px 0;font-size:13px;border-bottom:1px solid #e8ecf2}
+  .rtab{padding:7px 16px;border-radius:7px 7px 0 0;color:#5b6776;cursor:pointer;position:relative;display:flex;gap:7px;align-items:center;user-select:none}
+  .rtab:hover{background:#f3f5f9}
+  .rtab.active{color:var(--accent);font-weight:700}
+  .rtab.active::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:3px;border-radius:3px;background:var(--accent)}
+  .rtab .ctx{background:#fde68a;color:#92400e;font-size:10px;border-radius:99px;padding:1px 7px;font-weight:700}
+  .rpanel{display:none;padding:10px 12px 6px;overflow-x:auto}
+  .rpanel.active{display:flex}
+  .rg{display:flex;flex-direction:column;padding:0 12px;border-right:1px solid #eef1f6;min-width:max-content}
+  .rg:last-child{border-right:none}
+  .rg-rows{display:flex;flex-direction:column;gap:2px}
+  .rg-row{display:flex;gap:2px}
+  .rg-label{font-size:10.5px;color:#94a3b8;text-align:center;padding-top:5px;letter-spacing:.05em}
+  .rb{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 9px;border-radius:7px;cursor:default;font-size:11px;color:#3f4a59;min-width:52px;text-align:center}
+  .rb:hover{background:var(--accent-light)}
+  .rb .ic{width:26px;height:26px;display:grid;place-items:center;font-weight:700;font-size:14px;color:#334155}
+  .rb.small{flex-direction:row;padding:5px 10px;min-width:0}
+  .rb.small .ic{width:auto;height:auto;font-size:12.5px}
+  .rb.on{background:var(--accent-light);outline:1.5px solid #c7d2fe;color:var(--accent)}
+  .rb.danger:hover{background:#fef2f2}
+  .rb.danger .ic{color:#dc2626}
+  .rb.danger{color:#b91c1c}
+  .fddl{border:1px solid #cbd5e1;border-radius:6px;padding:4px 9px;font-size:11.5px;color:#334155;white-space:nowrap;background:#fff}
+  .fsep{width:1px;height:20px;background:#e8ecf2;margin:0 2px;flex:none}
+  .st{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:2px 9px;white-space:nowrap;margin-right:6px}
+  .st-done{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+  .st-part{background:#fef9c3;color:#a16207;border:1px solid #fef08a}
+  .st-todo{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
+  .st-dev{background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe}
+  .tbi{font-family:"Segoe UI Symbol","Segoe UI","Microsoft YaHei",sans-serif}
+  .ic.b{font-weight:800}
+  .ic.i{font-style:italic;font-family:Georgia,serif}
+  .ic.u{text-decoration:underline}
+  .ic.s{text-decoration:line-through;color:#64748b}
+  .ic.hl span{background:linear-gradient(transparent 45%,#fde047 45%);padding:0 2px}
+  .ic.code{font-family:Consolas,monospace;font-size:12px}
+  .ic svg{width:20px;height:20px;stroke:#334155;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ===== 纸张编辑区 ===== */
+  .paper-wrap{padding:22px 16px 0;display:flex;justify-content:center;background:linear-gradient(180deg,#f0f2f6,#e9edf3)}
+  .paper{background:#fff;width:min(760px,96%);padding:48px 58px 56px;box-shadow:0 2px 14px rgba(15,23,42,.14);border-radius:3px;color:#1e293b}
+  .paper h1{font-size:27px;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-bottom:16px}
+  .paper h2{font-size:19px;margin:18px 0 8px}
+  .paper p{margin:8px 0;color:#334155}
+  .paper strong{color:#0f172a}
+  .paper code{background:#f1f5f9;border:1px solid #e2e8f0;padding:1px 6px;border-radius:4px;font-family:Consolas,monospace;font-size:12.5px;color:#be185d}
+  .paper a{color:var(--accent)}
+  .paper del{color:#94a3b8}
+  .paper mark{background:#fef08a;padding:0 3px}
+  .paper blockquote{border-left:3px solid var(--accent);background:var(--accent-light);color:#475569;padding:8px 16px;margin:12px 0;border-radius:0 8px 8px 0;font-size:13.5px}
+  .paper ul,.paper ol{padding-left:24px;margin:8px 0;color:#334155}
+  .paper li{margin:4px 0}
+  .paper .task{list-style:none;padding-left:4px}
+  .paper .task li{display:flex;gap:8px;align-items:baseline}
+  .paper hr{border:none;border-top:1.5px dashed #cbd5e1;margin:18px 0}
+
+  .md-table-wrap{position:relative;margin:14px 0}
+  .md-table{border-collapse:collapse;width:100%;font-size:13px}
+  .md-table th{background:#f1f5f9;font-weight:600}
+  .md-table th,.md-table td{border:1px solid #cbd5e1;padding:6px 12px}
+  .md-table .sel-row td{background:#eef2ff}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+  .dot.g{background:#10b981}.dot.y{background:#f59e0b}.dot.gr{background:#94a3b8}
+
+  .tt-bar{position:absolute;top:-34px;left:0;background:#fff;border:1px solid #dfe4ec;border-radius:9px;box-shadow:0 8px 24px rgba(15,23,42,.18);display:flex;align-items:center;padding:3px;z-index:8;font-size:12px;color:#334155}
+  .tt-bar::after{content:"";position:absolute;left:34px;bottom:-5px;width:9px;height:9px;background:#fff;border-right:1px solid #dfe4ec;border-bottom:1px solid #dfe4ec;transform:rotate(45deg)}
+  .tt-b{padding:4px 9px;border-radius:6px;display:flex;gap:5px;align-items:center}
+  .tt-b:hover{background:var(--accent-light)}
+  .tt-sep{width:1px;height:16px;background:#e8ecf2;margin:0 3px}
+
+  .img-ph{position:relative;height:170px;margin:16px 0;border-radius:8px;background:repeating-linear-gradient(-45deg,#eef2f7,#eef2f7 12px,#e6ebf2 12px,#e6ebf2 24px);border:1px solid #dbe2ea;display:grid;place-items:center;color:#8b95a5;font-size:13px}
+  .img-ph .corner{position:absolute;width:11px;height:11px;background:#fff;border:2px solid var(--accent);border-radius:3px}
+  .img-ph .c1{top:-6px;left:-6px;cursor:nwse-resize}.img-ph .c2{top:-6px;right:-6px;cursor:nesw-resize}
+  .img-ph .c3{bottom:-6px;left:-6px;cursor:nesw-resize}.img-ph .c4{bottom:-6px;right:-6px;cursor:nwse-resize}
+  .img-pill{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;border-radius:99px;font-size:11.5px;padding:3px 14px;display:flex;gap:12px;box-shadow:0 6px 18px rgba(15,23,42,.35);white-space:nowrap}
+  .img-pill b{color:#a5b4fc}
+
+  .codebox{background:#0f172a;border-radius:9px;margin:14px 0;overflow:hidden;font-family:Consolas,"Courier New",monospace;font-size:12.3px}
+  .codebox .cb-h{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:#1e293b;color:#94a3b8;font-size:11px;font-family:"Segoe UI",sans-serif}
+  .codebox .cb-h .lang{color:#a5b4fc}
+  .codebox pre{padding:12px 16px;color:#e2e8f0;overflow-x:auto;line-height:1.65}
+  .codebox .kw{color:#c084fc}.codebox .st{color:#86efac}.codebox .fn{color:#7dd3fc}.codebox .cm{color:#64748b}
+
+  .sel-txt{background:rgba(79,70,229,.22);border-radius:2px;padding:0 1px}
+  .ft-bar{position:relative;display:inline-block}
+  .ft-pop{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);background:#1e293b;border-radius:9px;box-shadow:0 10px 28px rgba(15,23,42,.3);display:flex;align-items:center;padding:4px;gap:2px;white-space:nowrap}
+  .ft-pop::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#1e293b}
+  .ft-b{width:30px;height:28px;display:grid;place-items:center;color:#e2e8f0;border-radius:6px;font-size:13px;font-weight:600}
+  .ft-b:hover{background:#334155}
+  .ft-sep{width:1px;height:14px;background:#475569;margin:0 4px}
+
+  /* ===== 斜杠菜单 ===== */
+  .slash-stage{background:#f0f2f6;border:1px solid #dfe4ec;border-radius:10px;padding:34px 24px 30px;position:relative}
+  .sd-line{background:#fff;box-shadow:0 2px 10px rgba(15,23,42,.1);border-radius:3px;padding:14px 20px;max-width:640px;margin:0 auto;font-size:14.5px;color:#1e293b;position:relative}
+  .sd-slash{color:var(--accent);font-weight:800}
+  .sd-input{border:none;outline:none;font:inherit;width:130px;color:var(--accent);font-weight:700;caret-color:var(--accent)}
+  .caret{display:inline-block;width:2px;height:18px;background:var(--accent);vertical-align:-4px;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .slash{position:absolute;top:96px;left:50%;transform:translateX(-50%);width:360px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 48px rgba(15,23,42,.22);overflow:hidden;z-index:10;text-align:left}
+  .slash ul{list-style:none;max-height:330px;overflow-y:auto;padding:6px}
+  .sg{font-size:10.5px;color:#94a3b8;padding:8px 12px 3px;letter-spacing:.08em;font-weight:700}
+  .si{display:flex;gap:11px;padding:7px 10px;border-radius:8px;align-items:center;cursor:default}
+  .si:hover,.si.active{background:var(--accent-light)}
+  .si .si-ic{width:30px;height:30px;border-radius:7px;background:#f1f5f9;display:grid;place-items:center;font-size:13px;font-weight:700;color:#475569;flex:none}
+  .si .si-t{font-size:13.5px;font-weight:600;color:#1e293b}
+  .si .si-d{font-size:11.5px;color:#94a3b8}
+  .si kbd{margin-left:auto}
+  .s-empty{display:none;padding:16px;text-align:center;color:#94a3b8;font-size:13px}
+  .s-hint{border-top:1px solid var(--line);padding:8px 14px;font-size:11.5px;color:#94a3b8;display:flex;gap:14px;background:#fafbfc}
+
+  /* ===== 表格网格选择器 ===== */
+  .tp{width:270px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px rgba(15,23,42,.2);padding:14px}
+  .tp-label{text-align:center;font-size:13px;color:#334155;font-weight:600;margin-bottom:10px;min-height:20px}
+  .tp-grid{display:grid;grid-template-columns:repeat(8,24px);gap:3px;justify-content:center}
+  .gc{width:24px;height:19px;border:1px solid #cbd5e1;background:#fff;border-radius:3px;cursor:pointer}
+  .gc:hover{border-color:var(--accent)}
+  .gc.on{background:var(--accent);border-color:var(--accent)}
+  .tp-more{margin-top:11px;text-align:center;font-size:12.5px;color:var(--accent);cursor:pointer}
+
+  /* ===== 对话框 ===== */
+  .dlg{width:440px;max-width:100%;background:#fff;border:1px solid #d5dce6;border-radius:13px;box-shadow:0 20px 50px rgba(15,23,42,.2);overflow:hidden;margin:0 auto}
+  .dlg-h{padding:14px 20px;font-size:15px;font-weight:700;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .dlg-h .x{color:#94a3b8;font-size:16px}
+  .dlg-b{padding:16px 20px}
+  .dlg-f{padding:13px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;background:#fafbfc}
+  .frow{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+  .frow label{width:86px;font-size:13px;color:#475569;flex:none;text-align:right}
+  .frow .ctl{flex:1}
+  input.in,select.in{width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:7px 11px;font:inherit;font-size:13px;outline:none;background:#fff;color:#1e293b}
+  input.in:focus,select.in:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.14)}
+  .spin{display:inline-flex;align-items:center;border:1px solid #cbd5e1;border-radius:7px;overflow:hidden}
+  .spin button{width:30px;height:32px;border:none;background:#f8fafc;cursor:pointer;font-size:15px;color:#475569}
+  .spin input{width:52px;border:none;text-align:center;font:inherit;outline:none}
+  .radio-line{display:flex;gap:16px;font-size:13px;color:#334155;flex-wrap:wrap}
+  .btn{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;padding:7px 18px;font:inherit;font-size:13px;cursor:pointer}
+  .btn:hover{background:#f8fafc}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.pri:hover{background:#4338ca}
+  .btn.txt-danger{color:#dc2626;border-color:#fecaca}
+  .dlg-tabs{display:flex;gap:4px;margin-bottom:15px;border-bottom:1px solid var(--line);padding:0 4px}
+  .dlg-tab{padding:7px 14px;font-size:13px;color:#64748b;border-bottom:2px solid transparent;cursor:default}
+  .dlg-tab.on{color:var(--accent);border-color:var(--accent);font-weight:600}
+  .hint-tip{font-size:11.5px;color:#94a3b8;margin-top:-6px;margin-bottom:12px;margin-left:98px}
+  .range{display:flex;align-items:center;gap:10px}
+  .range input[type=range]{flex:1;accent-color:var(--accent)}
+  .range b{width:40px;text-align:right;font-size:12.5px}
+
+  /* ===== 主题对比 ===== */
+  .theme-card{border-radius:11px;padding:20px 22px;min-height:200px}
+  .theme-light{background:#fff;border:1px solid var(--line);color:#1e293b}
+  .theme-dark{background:#111827;border:1px solid #1f2937;color:#e5e7eb}
+  .theme-card h5{font-size:15px;margin-bottom:10px}
+  .theme-dark .tk{color:#a5b4fc}
+  .theme-light .tk{color:var(--accent)}
+  .theme-card p{font-size:12.8px;opacity:.85}
+  .swatches{display:flex;gap:6px;margin-top:12px}
+  .sw{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.12)}
+
+  /* ===== 时间线 ===== */
+  .ms{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:960px){.ms{grid-template-columns:1fr 1fr}}
+  .ms .m{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;position:relative}
+  .ms .m::before{content:"";position:absolute;top:0;left:16px;right:16px;height:4px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .ms .m h4{font-size:14.5px;margin:6px 0 4px}
+  .ms .m .per{font-size:11.5px;color:var(--accent);font-weight:700;letter-spacing:.05em}
+  .ms .m ul{list-style:none;font-size:12.3px;color:#475569;margin-top:8px}
+  .ms .m li{padding-left:14px;position:relative;margin-bottom:4px}
+  .ms .m li::before{content:"›";position:absolute;left:2px;color:var(--accent);font-weight:700}
+
+  .arch{display:flex;flex-direction:column;gap:10px;margin:8px 0}
+  .arch .layer{border-radius:10px;padding:12px 18px;font-size:13.5px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .arch .layer b{width:130px;flex:none;font-size:13px}
+  .arch .tagchip{background:rgba(255,255,255,.55);border-radius:6px;padding:2px 10px;font-size:12px;color:#1e293b}
+  .l1{background:#e0e7ff;color:#312e81}.l2{background:#ede9fe;color:#4c1d95}.l3{background:#dbeafe;color:#1e3a8a}.l4{background:#dcfce7;color:#14532d}
+
+  footer{margin-top:60px;background:#0f172a;color:#94a3b8;padding:26px 0;font-size:12.5px;text-align:center}
+  .vs-scroll{overflow-x:auto}
+  .num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+
+<!-- ================= 文档头 ================= -->
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">Product Requirement &amp; UI Design Spec</div>
+    <h1>Markdown Word <span style="font-weight:400;opacity:.75;font-size:22px">— Word 式 Markdown 可视化编辑器（VS Code 插件）</span></h1>
+    <p class="sub">在 VS Code 中提供与 Microsoft Word 一致的所见即所得编辑体验：Ribbon 菜单、可视化表格创建、图片直接粘贴、<b>Confluence 式斜杠命令（/）</b>与内置 <b>AI 助手（GitHub Copilot）</b>，支持字体选择、页面设置（纸张尺寸 / 背景色 / 条纹）与 PDF 导出，并完整覆盖 Markdown 常见语法。本文档为 v1.7 目标规格，含完善后的功能需求与 UI 设计。</p>
+    <div class="meta">
+      <span class="chip">版本 v1.7 规格（评审稿 · 新增页面设置与页面外观）</span>
+      <span class="chip">日期 2026-08-22</span>
+      <span class="chip">现状：原型 v0.0.1 已打包（wysiwyg-markdown-editor）</span>
+      <span class="chip">平台：VS Code ≥ 1.85 · Windows / macOS / Linux</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" id="toc">
+  <a href="#s1">1 · 项目概述</a>
+  <a href="#s2">2 · 需求梳理</a>
+  <a href="#s3">3 · 功能需求详述</a>
+  <a href="#s4">4 · UI 设计</a>
+  <a href="#s5">5 · 快捷键</a>
+  <a href="#s6">6 · 设置与命令</a>
+  <a href="#s7">7 · 非功能需求</a>
+  <a href="#s8">8 · 技术方案</a>
+  <a href="#s9">9 · 里程碑与风险</a>
+  <a href="#s10">10 · 需求跟踪表</a>
+</nav>
+
+<main class="wrap">
+
+<!-- ================= 1 概述 ================= -->
+<section id="s1">
+  <h2 class="sec"><span class="sec-no">1</span>项目概述</h2>
+  <p class="sec-lead">为什么做、做成什么样、给谁用。</p>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">项目定义</h3>
+    <p><b>Markdown Word</b> 是一个 VS Code 自定义编辑器插件。用户双击打开 <code>.md</code> 文件时，可以像在 Word 中一样：点按钮加粗、拖网格建表格、Ctrl+V 粘贴截图、输入 <code>/</code> 唤出块菜单——而文件本身始终是标准 Markdown 纯文本，可继续被 Git、静态站点、CI 和任何 Markdown 工具消费。</p>
+    <div class="grid3" style="margin-top:16px">
+      <div>
+        <h4 style="font-size:14px;margin-bottom:6px">🎯 目标</h4>
+        <p style="font-size:13px;color:#475569">让不熟悉 Markdown 语法的用户（运营、产品、管理岗）零门槛写 Markdown；让熟练用户获得比 Typora/Notion 更顺手的表格与图片工作流，且不离开 VS Code。</p>
+      </div>
+      <div>
+        <h4 style="font-size:14px;margin-bottom:6px">👤 目标用户</h4>
+        <p style="font-size:13px;color:#475569">① 从 Word/WPS 迁移、被 Markdown 语法劝退的文档作者；② 天天写文档、但受够手敲表格竖线的开发者；③ 需要在文档中高频贴图的技术与设计团队。</p>
+      </div>
+      <div>
+        <h4 style="font-size:14px;margin-bottom:6px">💎 核心价值</h4>
+        <p style="font-size:13px;color:#475569">「按钮能做的事，不要求记语法」。四张王牌：<b>Word 级 Ribbon 界面</b>、<b>可视化表格</b>、<b>粘贴即存的图片</b>、<b>Confluence 式 / 菜单</b>；一个杀手锏：<b>AI 助手</b>——复用 VS Code 里的 GitHub Copilot 登录，/ 唤出写大纲与模板，选中文字即改写润色。</p>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">设计原则</h3>
+    <ul class="dots">
+      <li><b>纯文本保真</b> — 磁盘上永远是规范 Markdown；可视化编辑是视图不是格式。任何操作后源码可读、diff 友好。</li>
+      <li><b>像 Word 一样可发现</b> — 所有能力都能从菜单/工具栏找到，快捷键和 <code>/</code> 只是加速器。</li>
+      <li><b>模式自由</b> — 所见即所得 / 源码 / 双屏三模式随时切换，同一文件无缝互通，尊重 VS Code 老用户习惯。</li>
+      <li><b>原生融入</b> — 主题、字体、快捷键体系、自动保存、大纲面板全部跟随 VS Code，不做"插件里的孤岛"。</li>
+      <li><b>AI 内建、先预览后落盘</b> — AI 复用 VS Code 已登录的 GitHub Copilot（Language Model API），零二次登录；一切 AI 改写先差异预览，用户确认后才写入磁盘。</li>
+      <li><b>持久化优先</b> — 插入的图片一律落盘为相对路径引用，杜绝会话级临时地址；任何机器、任何时间重开文档，所见即所存。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================= 2 需求梳理 ================= -->
+<section id="s2">
+  <h2 class="sec"><span class="sec-no">2</span>需求梳理与优先级</h2>
+  <p class="sec-lead">用户原始诉求 → 完善后的完整需求。共归纳为 16 个功能模块，按 P0（MVP 必须）/ P1（v1.0）/ P2（后续版本）分级。v1.7 变更：新增 <b>F16 页面设置与外观</b>（纸张尺寸：适应屏幕 / 常见纸张，内容跟随重排；页面背景色与条纹）。v1.6：M1 开发交付（v1.0.0 vsix）。v1.5：性能专项。v1.4：需求跟踪总表。历史：v1.3 图标化 / i18n / Draw.io / Emoji MRU；v1.2 Ribbon 两行 / 中英文字体 / 等宽代码 / PL/SQL；v1.1 Confluence 菜单 / AI 助手 / PDF / 图片持久化。</p>
+
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">2.1 原始诉求 → 完善后的需求</h3>
+    <table class="tbl">
+      <tr><th style="width:24%">用户原始诉求</th><th style="width:56%">完善后的需求</th><th>对应模块</th></tr>
+      <tr><td>VS Code 插件，编辑 Markdown 文件</td><td>自定义编辑器接管 <code>.md</code> 打开方式；所见即所得 / 源码 / 左右分屏三模式；自动保存与外部修改同步</td><td>F01 · F14</td></tr>
+      <tr><td>类似 Word 的界面与菜单</td><td>Ribbon 工具栏（开始/插入/表格/视图四页）、快速样式库、选区浮动工具栏、上下文标签页、右键菜单、纸张化页面布局、状态栏</td><td>UI-01~07</td></tr>
+      <tr><td>可视化创建表格（像 Word 按钮创建）</td><td>悬停网格选择器（8×6）+ 自定义行列对话框；插删行列、行列移动、对齐、表头切换；<b>Tab/Enter/方向键</b>单元格导航；末格 Tab 自动续行</td><td>F05</td></tr>
+      <tr><td>直接粘贴图片</td><td>剪贴板粘贴即自动落盘（保存策略可配：相对目录 / 同目录 / Base64 / 询问）；支持拖拽文件与 URL 插入；选中可拖拽缩放、编辑 alt 与对齐</td><td>F06</td></tr>
+      <tr><td>插入无序列表、有序列表</td><td>补充<b>任务列表</b>（勾选框）；嵌套缩进 Tab / Shift+Tab；Enter 续行、空行退出；列表互转</td><td>F04</td></tr>
+      <tr><td>通过 "/" 呼出菜单<span class="badge b-new">迭代</span></td><td>对齐 Confluence 习惯：任意位置输入 <code>/</code> 即唤出（不限于空行）；固定分类分组（AI 助手 / 基础块 / 列表 / 媒体与插入 / 高级）；边输入边过滤（中英文+拼音）；支持二级子菜单（AI 模板 ▸、面板 ▸）；↑↓←→ 导航、Enter 确认、Esc 关闭</td><td>F08</td></tr>
+      <tr><td><span class="badge b-new">新增</span> "/" 菜单引入 AI</td><td>斜杠菜单首组「AI 助手」：AI 生成本节大纲、AI 模板创作（周报/会议纪要/API 文档等）、AI 续写、AI 总结全文</td><td>F15</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 选中文字呼出 AI</td><td>选区浮动工具条 ✨ 与右键菜单：改写、润色、扩写、缩写、翻译、修正错别字、自定义指令；差异预览后接受/重试/放弃</td><td>F15</td></tr>
+      <tr><td><span class="badge b-new">新增</span> AI 用 GitHub Copilot</td><td>复用当前 VS Code 的 Copilot 登录（Language Model API <code>vscode.lm</code>），免二次登录免配置；模型可切换；未登录时优雅隐藏</td><td>F15 · F14</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 页面支持选择字体</td><td>Ribbon 字体族 + 字号下拉，作用于选区或全文；以带回退链的 HTML <code>font-family</code> 属性持久化，导出 PDF 内嵌字体子集</td><td>F02 · F13</td></tr>
+      <tr><td><span class="badge b-new">强化</span> 导出 PDF</td><td>字体子集内嵌（含自选字体）、图片全部打包、页眉页脚页码、按标题生成书签、公式/Mermaid 渲染嵌入、可仅导出选中部分</td><td>F13</td></tr>
+      <tr><td><span class="badge b-new">强化</span> 粘贴图片必须持久化</td><td>插入的图片一律有磁盘持久副本（默认复制到 <code>./images</code> 相对目录；可选同目录/Base64），绝不引用会话临时地址；打开时校验全部图片链接，丢失即原位提示修复；文档连同目录整体搬移不丢图</td><td>F06</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 菜单栏压缩到 1~2 行</td><td>Ribbon 恒定两行：第 1 行页签、第 2 行当前页签的单行工具组（含底部微标签）；低频操作收进 ▾ 下拉（粘贴 ▾ / 更多格式 ▾ / 移动 ▾）；窄屏横向滚动，绝不折行到第三行；为编辑区释放垂直空间</td><td>UI-01 · UI-08</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 中英文默认不同字体</td><td>西文字体与中文字体分设（Word 同款双下拉）：西文管拉丁字符与数字（默认 Segoe UI），中文管 CJK 字符（默认微软雅黑），组合为回退链 <code>'Segoe UI','Microsoft YaHei'</code>，中英文自动各用其字体</td><td>F02</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 代码块与正文字体不同（代码块等宽）</td><td>正文用比例字体（西文 + 中文组合）；代码块 / 行内代码固定独立等宽字体（默认 Consolas 回退链），不继承正文字体设置，保证对齐与可读性</td><td>F02 · F09</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 代码块支持常见语言与 PL/SQL</td><td>语言下拉内置 30+ 主流语言并明确含 PL/SQL（及 SQL / T-SQL 方言）；可搜索、别名匹配（plsql / oracle）、最近使用置顶</td><td>F09</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 工具栏尽可能用图标</td><td>Ribbon 按钮一律图标化，悬停 tooltip 显示中文名 + 快捷键；仅语义模糊的下拉 / 开关保留极短文字；工具行进一步压至 ~42px</td><td>UI-01 · UI-10</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 界面操作支持中文和英文</td><td>界面完整中英双语：跟随 VS Code 显示语言（vscode.l10n），可强制 zh-CN / en 且即时生效；覆盖 Ribbon tooltip、斜杠菜单、对话框、右键菜单、状态栏；斜杠 / Emoji 搜索中英关键词等权</td><td>F14</td></tr>
+      <tr><td><span class="badge b-new">探索</span> 插入 drawio 流程图</td><td><b>可行性结论：可行。</b>文档内一块区域嵌入 Draw.io 编辑器就地绘制；源文件持久化为 <code>./diagrams/*.drawio.svg</code>（XML 内嵌于 SVG），Markdown 以标准图片语法引用——GitHub 原生渲染，且可被 vscode-drawio 插件二次编辑；查看态渲染图片、双击进入编辑</td><td>F10 · UI-08</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 斜杠菜单快速插 Emoji + 最近使用排前</td><td>斜杠菜单输入 <code>/笑脸</code>、<code>/smile</code> 即过滤出 Emoji，回车直接插入；Ribbon 与斜杠菜单<b>共用同一 Emoji 面板与同一 MRU</b>：首行「最近使用」（最多 24 个、持久化、两入口实时同步），下方分类浏览 + 双语搜索</td><td>F10 · UI-03</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 性能：使用流畅优先，其次控制内存占用</td><td>流畅度（第一优先，量化验收）：键入上屏 &lt;16ms / 滚动 60fps / 菜单打开 &lt;100ms / 首屏 &lt;300ms；内存（第二优先）：空文档 &lt;150MB、典型文档 &lt;300MB、8 小时长编辑无泄漏；手段：虚拟滚动、懒渲染、重型依赖按需加载、LRU 缓存、关闭即销毁</td><td>7 · 8 · 10</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 页面视图尺寸可调（Word 页面设置）</td><td>默认<b>适应屏幕宽度</b>（窗口缩放自动跟随）；可选常见纸张：A3 / A4 / A5 / B5 / Letter / Legal / 自定义宽度（96dpi 换算，如 A4=794px）；切换后内容<b>流式重排</b>（换行 / 表格收缩 / 图片等比缩放 / 代码块横向滚动）；与导出 PDF 联动（默认采用当前页面尺寸）；设置按工作区持久化、<b>不写入文档</b></td><td>F16 · UI-09</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 页面背景色与条纹</td><td>纸张背景色：跟随主题（默认）/ 白 / 护眼绿 / 羊皮纸 / 冰蓝 / 自定义取色；条纹：无 / 横线（信纸，对齐行高）/ 方格 / 点阵，与背景色叠加渲染；仅影响屏显与可选导出，不污染 Markdown 源码</td><td>F16 · UI-09</td></tr>
+      <tr><td><span class="badge b-new">补充</span> 支持所有常见 Markdown 功能</td><td>标题 H1–H6、粗斜删、行内代码、<b>高亮</b>、上下标、引用、代码块（语言选择+高亮）、数学公式（KaTeX）、Mermaid 图表、脚注、目录 TOC、分割线、链接、HTML 直写、Emoji</td><td>F02 · F03 · F09 · F10</td></tr>
+      <tr><td><span class="badge b-new">补充</span> —（主动新增）</td><td>智能粘贴：从 Word / Excel / 网页复制内容自动转换为 Markdown（保留标题、粗斜、表格）；查找替换；导出 HTML / PDF / Word；字数统计；命令面板与自定义快捷键</td><td>F11 · F12 · F13 · F14</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">2.2 功能模块总览</h3>
+    <table class="tbl">
+      <tr><th style="width:70px">编号</th><th>模块</th><th style="width:90px">优先级</th><th>一句话说明</th></tr>
+      <tr><td>F01</td><td><b>编辑模式与文件管理</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>三模式切换、自动保存、外部修改同步、脏状态标记</td></tr>
+      <tr><td>F02</td><td><b>文本与行内格式</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>粗体、斜体、删除线、行内代码、高亮、上下标、清除格式、格式刷、中英文分设字体</td></tr>
+      <tr><td>F03</td><td><b>标题与段落</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>H1–H6 快速样式、升降级、Markdown 快捷输入（# 空格→标题）</td></tr>
+      <tr><td>F04</td><td><b>列表</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>无序 / 有序 / 任务列表、嵌套缩进、三种列表互转</td></tr>
+      <tr><td>F05</td><td><b>表格（王牌）</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>网格选择器创建、行列增删移、对齐、表头、Excel 粘贴转换</td></tr>
+      <tr><td>F06</td><td><b>图片（王牌）</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>剪贴板粘贴落盘、拖拽、URL、缩放手柄、alt/对齐编辑</td></tr>
+      <tr><td>F07</td><td><b>链接与锚点</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>链接对话框、Ctrl+K、URL 自动识别、编辑/移除、锚点跳转</td></tr>
+      <tr><td>F08</td><td><b>斜杠命令（杀手锏 · Confluence 式）</b></td><td><span class=”badge b-p0”>P0 · MVP</span></td><td>任意位置 “/” 唤出：分类分组、实时过滤、二级子菜单、键盘导航</td></tr>
+      <tr><td>F09</td><td><b>代码块</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>语言下拉（可搜索，30+ 语言含 PL/SQL）、语法高亮、行号、一键复制、独立等宽字体</td></tr>
+      <tr><td>F10</td><td><b>高级内容</b></td><td><span class="badge b-p1">P1 · v1.0</span></td><td>数学公式、Mermaid、Draw.io 流程图（嵌入编辑）、脚注、TOC、HTML 直写、Emoji（MRU 置顶）</td></tr>
+      <tr><td>F11</td><td><b>智能粘贴</b></td><td><span class="badge b-p1">P1 · v1.0</span></td><td>Word/Excel/网页 → Markdown 智能转换，表格与图片联动</td></tr>
+      <tr><td>F12</td><td><b>查找替换</b></td><td><span class="badge b-p1">P1 · v1.0</span></td><td>大小写、正则、全部替换、命中高亮</td></tr>
+      <tr><td>F13</td><td><b>导出</b></td><td><span class="badge b-p1">P1 · v1.0</span></td><td>HTML / PDF（P1），Word docx（P2），可选样式模板</td></tr>
+      <tr><td>F14</td><td><b>VS Code 集成与设置</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>命令面板、大纲视图、面包屑、设置项、主题跟随、状态栏、界面中英文（i18n）</td></tr>
+      <tr><td>F15</td><td><b>AI 助手（GitHub Copilot）</b></td><td><span class="badge b-p1">P1 · v1.0</span></td><td>斜杠 AI 写作（大纲/模板/续写/总结）、选区 AI 改写润色、差异预览、模型切换</td></tr>
+      <tr><td>F16</td><td><b>页面设置与外观</b></td><td><span class="badge b-p1">P1 · v1.7</span></td><td>纸张尺寸（适应屏幕 / A3–Legal / 自定义）内容流式重排；页面背景色与条纹（护眼 / 羊皮纸 / 横线 / 方格）</td></tr>
+    </table>
+    <p class="fig-note">注：P2（远期）条目在各模块详述中以 <span class="badge b-p2">P2</span> 标注，如 PicGo 图床上传、docx 导出、自定义 CSS 主题、斜杠菜单自定义项、AI 指令库与 AI 图表生成等。</p>
+  </div>
+</section>
+
+<!-- ================= 3 功能详述 ================= -->
+<section id="s3">
+  <h2 class="sec"><span class="sec-no">3</span>功能需求详述</h2>
+  <p class="sec-lead">每个模块包含：能力清单与交互约定，末尾附验收要点。</p>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F01</span><h3>编辑模式与文件管理</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>三种模式</b> — ① 所见即所得（默认）：Word 式页面化编辑；② 源码模式：等宽字体的纯 Markdown；③ 分屏模式：左侧源码、右侧渲染，双向同步、同步滚动。Ribbon「视图」页与状态栏均可切换。</li>
+      <li><b>自动保存</b> — 跟随 VS Code 原生 <code>files.autoSave</code> 策略；标签页显示脏点 ●，<kbd>Ctrl+S</kbd> 立即写盘。</li>
+      <li><b>外部修改同步</b> — 文件被 Git 或其他程序改动时弹提示：「重新加载 / 覆盖保存」，两选一，禁止静默覆盖。</li>
+      <li><b>撤销重做</b> — <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>，粒度为语义操作（「插入一行」是一次撤销，不是数十次字符修改）。</li>
+      <li><b>大文件保护</b> — 超过 1MB 或 5 万字的文档提示切换源码模式，避免可视化渲染卡顿。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>三模式内容双向一致；外部修改 100% 触发提示；100KB 文档键入无可感知延迟。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F02</span><h3>文本与行内格式</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>行内格式全家桶</b> — 粗体 <code>**</code>、斜体 <code>*</code>、删除线 <code>~~</code>、行内代码 <code>`</code>、<b>高亮 <code>==</code></b>（P1）、上标/下标（P1，<code>^</code> / <code>~</code> 扩展语法）。</li>
+      <li><b>作用规则</b> — 有选区时作用于选区；无选式按开关式输入（再按一次或移动光标闭合）。</li>
+      <li><b>清除格式</b> — Ribbon 按钮，一键去除选区全部行内标记；<b>格式刷</b>（P1）复制字符样式。</li>
+      <li><b>快捷输入</b> — Markdown 速记自动转换：输入 <code>**加粗**</code>、<code>`code`</code> 在闭合时渲染为富文本；粘贴的成对标记同样识别。</li>
+      <li><b>字体选择（P1 · 用户强调）</b> — Ribbon「字体」组提供<b>西文字体 + 中文字体两个下拉</b>（Word 同款习惯，可搜索、选中即预览）与字号下拉：西文字体管拉丁字符与数字（默认 Segoe UI），中文字体管 CJK 字符（默认微软雅黑），二者组合为回退链 <code>font-family:'Segoe UI','Microsoft YaHei',sans-serif</code>——中英文自动各用其字体、互不干扰；有选区作用于选区、无选区设为全文默认；持久化为带回退链的 HTML 属性，源码模式可见可改；「清除格式」一键移除；导出 PDF 内嵌字体子集，保证他机打开不缺字（选择器见图 UI-07 ④）。</li>
+      <li><b>正文字体 ≠ 代码字体（用户强调）</b> — 正文（含标题、表格、引用等）使用上述比例字体组合；<b>代码块与行内代码固定使用独立等宽字体</b>（默认 Consolas，设置 <code>editor.codeFontFamily</code>，见 F09），代码区不继承正文字体设置，确保对齐与可读性。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>每种格式均有按钮入口 + 快捷键 + 速记输入三条路径；自选字体保存重开后排版一致，且在未安装该字体的机器上正常回退、PDF 显示正常；保存后源码为标准 Markdown + 受控 HTML 属性。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F03</span><h3>标题与段落</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>快速样式库</b> — Ribbon「开始」页横排展示 正文 / H1–H6 缩略样式，光标所在块高亮对应样式（Word 样式库行为）。</li>
+      <li><b>快捷输入</b> — 行首输入 <code>#</code>+空格 变 H1，<code>##</code>+空格 变 H2，以此类推；行首 <code>&gt;</code>+空格 变引用。</li>
+      <li><b>升降级</b> — <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd> 在标题上切换级别（H2→H3 / H2→H1）。</li>
+      <li><b>段落</b> — <kbd>Enter</kbd> 新段落；<kbd>Shift+Enter</kbd> 软换行（<code>两个空格</code> 或 <code>\</code>，可配置）。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>六种标题 + 正文互转均无损；源码中标题井号层级与界面一致。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F04</span><h3>列表</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>三种列表</b> — 无序 <code>-</code>、有序 <code>1.</code>、任务 <code>- [ ]</code>；各配 Ribbon 按钮与斜杠菜单项。</li>
+      <li><b>嵌套</b> — <kbd>Tab</kbd> 增加一级缩进、<kbd>Shift+Tab</kbd> 减少，最多 6 级；有序列表跨级编号正确续接（1.1 / 1.2）。</li>
+      <li><b>续行与退出</b> — <kbd>Enter</kbd> 续新项；空项上再按 <kbd>Enter</kbd> 退出列表；<kbd>Backspace</kbd> 删除标记转普通段落。</li>
+      <li><b>任务勾选</b> — 点击复选框即切换 <code>[ ]</code> / <code>[x]</code>，源码同步。</li>
+      <li><b>互转</b> — 选中段落一键转三种列表之一；有序→无序保留层级。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>三层嵌套混合列表（有序套任务套无序）编辑、勾选、序列化后 GFM 完全合法。</div>
+  </div>
+
+  <div class="card feat" style="border-left:4px solid var(--accent)">
+    <div class="feat-h"><span class="fno">F05</span><h3>表格 — 可视化创建与编辑（王牌功能）</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <p>对标 Word 的「插入 → 表格」体验，同时覆盖 Markdown 表格全部语法（对齐、表头）。</p>
+    <ul class="dots">
+      <li><b>网格选择器创建</b> — Ribbon「插入 → 表格」下拉 8×6 悬停网格，实时显示「4 × 3 表格」，松开即插入（见图 UI-02）。</li>
+      <li><b>自定义对话框</b> — 「插入表格…」指定行数 × 列数、是否含表头、默认对齐，适合大表。</li>
+      <li><b>单元格导航</b> — <kbd>Tab</kbd> 跳下一格（末格 <kbd>Tab</kbd> 自动追加新行，Word 同款）；<kbd>Shift+Tab</kbd> 上一格；<kbd>Enter</kbd> 单元格内换行；方向键跨格移动。</li>
+      <li><b>行列操作</b> — 上下文工具条 + Ribbon「表格」页：上方/下方插行、左/右侧插列、删行、删列；行上移/下移、列左移/右移（P1）。</li>
+      <li><b>对齐与表头</b> — 按列设置左/中/右对齐（写入 <code>:---:</code> 语法）；一键切换首行表头。</li>
+      <li><b>浮动工具条</b> — 光标进入表格时，表格左上角浮现快捷操作条（见图 UI-01 ⑤）。</li>
+      <li><b>Excel 粘贴</b>（P1，属 F11）— 从 Excel/WPS 表格直接粘贴，自动转换为 Markdown 表格。</li>
+      <li><b>列宽记忆</b>（P2）— 拖拽调列宽以 HTML/注释形式记录，回退为标准宽度不影响内容。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>全程不接触竖线与连字符即可完成「创建 5×4 表格 → 插入一列 → 设置某列居中 → 删除一行」；保存后源码可被 GitHub 正确渲染。</div>
+  </div>
+
+  <div class="card feat" style="border-left:4px solid var(--accent)">
+    <div class="feat-h"><span class="fno">F06</span><h3>图片 — 粘贴即存（王牌功能）</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>剪贴板粘贴</b> — 任意截图工具截图后 <kbd>Ctrl+V</kbd>：图片自动写入本地并插入 <code>![](相对路径)</code>。PNG/JPEG/GIF/WebP/SVG。</li>
+      <li><b>保存策略（设置项）</b> — ① 复制到 <code>./images</code>（默认）；② 与文档同目录；③ Base64 内嵌；④ 每次弹窗询问。文件名规则默认 <code>${文档名}-${时间戳}.png</code>，可自定义模板。</li>
+      <li><b>持久化保证（用户强调）</b> — 三种策略均为<b>持久形态</b>：插入文档的每张图片必有磁盘副本，Webview 内部的临时 blob / 会话地址<b>永不作为最终引用写入文件</b>。由此保证：任何时候重新打开文档，排版与图片和上次保存时完全一致（所见即所存）。</li>
+      <li><b>打开时完整性校验</b> — 打开文档即扫描全部图片引用：本地缺失的图原位显示「🖼 图片丢失 · 重新定位 / 移除占位」卡片，绝不静默空白；外链加载失败给出标识并附「转存本地」一键落盘（兼顾持久化与离线阅读）。</li>
+      <li><b>可携带性</b> — 相对路径引用保证「文档 + 同级目录」整体拷贝 / 提交 Git 后图片不丢；提供「打包文档（.zip：md + images）」辅助命令（P2）。</li>
+      <li><b>拖拽插入</b> — 从资源管理器拖图片文件进编辑区，同策略处理；拖 URL 则插入外链。</li>
+      <li><b>三来源对话框</b> — 「插入 → 图片」提供 本地文件 / 图片 URL / 剪贴板预览 三个页签，可填 alt。</li>
+      <li><b>选中编辑</b>（P1）— 单击图片选中：四角缩放手柄（拖拽改宽度，以 <code>=500x</code> 或 HTML width 写入）、浮动小卡显示宽度百分比、对齐、替换图片、另存为。</li>
+      <li><b>图床上传</b>（P2）— 对接 PicGo / S3 / 自定义上传接口，粘贴后自动换外链。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>微信/QQ/SnippingTool 截图 → Ctrl+V → 2 秒内图片落盘、链接插入、预览可见；重命名文档目录后相对路径仍有效。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F07</span><h3>链接与锚点</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>链接对话框</b> — <kbd>Ctrl+K</kbd> 或 Ribbon 按钮：显示文本 / URL / 标题（title）三字段；编辑已有链接同款。</li>
+      <li><b>交互</b> — 可视化模式中 <kbd>Ctrl</kbd>+点击 打开链接；右键「编辑链接 / 复制地址 / 移除链接」。</li>
+      <li><b>自动识别</b> — 粘贴裸 URL 自动包裹为链接；粘贴时若剪贴板同时有文本与 URL，选中即文本、URL 即地址（Word 同款）。</li>
+      <li><b>锚点与引用</b>（P1）— <code>[text][ref]</code> 引用式链接的编辑支持；标题锚点 <code>#标题</code> 自动补全。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>链接四要素（文本/URL/title/引用式）在可视化与源码间往返不丢。</div>
+  </div>
+
+  <div class="card feat" style="border-left:4px solid var(--accent)">
+    <div class="feat-h"><span class="fno">F08</span><h3>斜杠命令「 / 」（杀手锏 · Confluence 式）</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>任意位置唤出（Confluence 核心习惯）</b> — 段落任意位置输入 <code>/</code> 即弹出菜单（不要求空行 / 行首）；菜单锚定光标下方；删除 <code>/</code> 或按 <kbd>Esc</kbd> 关闭并保留已输入文本。</li>
+      <li><b>固定分类分组</b> — <b>✨ AI 助手</b>（详见 F15）→ <b>基础块</b>（H1–H3 / 正文 / 引用 / 分割线 / 公式）→ <b>列表</b>（无序 / 有序 / 任务）→ <b>媒体与插入</b>（表格 / 图片 / 链接 / 代码块 / Mermaid / 脚注 / 目录 / Emoji）→ <b>高级</b>（面板 / HTML 块）。完整布局见图 UI-03。</li>
+      <li><b>实时过滤</b> — <code>/</code> 后继续输入即过滤，支持中文名、英文关键词、拼音首字母（<code>bg</code> → 表格，P1）；无匹配时显示「继续输入以查找操作…」入口，进入全量命令搜索（Confluence 同款兜底）；输入 <code>/笑脸</code> 或 <code>/smile</code> 直接过滤出 Emoji，回车即插入、无需打开面板（最近使用的 emoji 排最前，见 F10）。</li>
+      <li><b>二级子菜单</b> — <kbd>→</kbd> 或悬停展开：「AI 模板创作 ▸」展开周报 / 会议纪要 / API 文档…；「面板 ▸」展开 信息 / 提示 / 警告 / 错误 四色提示面板（P1，对标 Confluence Panels）。</li>
+      <li><b>键盘导航</b> — <kbd>↑</kbd><kbd>↓</kbd> 主列表、<kbd>→</kbd><kbd>←</kbd> 进出子菜单、<kbd>Enter</kbd> 确认、<kbd>Esc</kbd> 逐级关闭；菜单底部常驻提示条。</li>
+      <li><b>不触发场景</b> — 代码块 / 行内代码 / 链接 URL 内不触发；中文输入法组词过程中的 <code>/</code> 不触发（仅上屏后生效）。</li>
+      <li><span class="badge b-p2">P2</span> — 用户自定义菜单项与分组排序；「查找操作」全量命令面板。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>段落中间输入 <code>/bg</code>+Enter 也能插入表格；<code>/模</code> 能过滤出「AI 模板创作」并展开子菜单；新建空白文档仅用键盘 3 步插入 3×3 表格。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F09</span><h3>代码块</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>创建</b> — Ribbon / 斜杠菜单 / 快捷键 <kbd>Ctrl+Shift+K</kbd>；行首输入 <code>```</code>+语言 自动转换。</li>
+      <li><b>语言选择（用户强调）</b> — 右上角可搜索下拉，内置 30+ 常见语言并<b>明确包含 PL/SQL</b>：JavaScript / TypeScript / Python / Java / C / C++ / C# / Go / Rust / PHP / Ruby / Swift / Kotlin / Scala / HTML / CSS / JSON / YAML / XML / Markdown / Shell / Batch / PowerShell / Dockerfile / TOML / <b>SQL</b> / <b>PL/SQL（Oracle）</b> / T-SQL 等；支持别名匹配（输入 plsql / oracle / 存储过程 均命中 PL/SQL）；最近使用的 5 种语言置顶；新建代码块默认记住上次选择；语言别名可由设置扩展。</li>
+      <li><b>独立等宽字体（用户强调）</b> — 代码块与行内代码使用独立等宽字体（默认 <code>Consolas → 'Courier New' → monospace</code> 回退链，设置项 <code>editor.codeFontFamily</code>），<b>不继承正文中英文比例字体</b>；代码内中文按等宽中文字体回退（系统安装了 Sarasa Mono SC 等宽中文字体时优先），保证中英混排对齐。</li>
+      <li><b>渲染</b> — Shiki 语法高亮（与 VS Code 主题一致）、行号；一键复制按钮（P1）；行高亮标记（P2）。</li>
+      <li><b>编辑</b> — 块内等宽字体直接编辑；<kbd>Tab</kbd> 输入两个空格；支持缩进多行。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>主流 30+ 语言高亮正确，PL/SQL 存储过程（CREATE PROCEDURE / 游标 / 异常块 / %TYPE）高亮无误；代码块渲染为等宽字体且与正文字体设置互不影响；代码块内容所见即所得编辑，不破坏缩进与特殊字符。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F10</span><h3>高级内容</h3><span class="badge b-p1">P1 · v1.0</span></div>
+    <ul class="dots">
+      <li><b>数学公式</b> — KaTeX 渲染；行内 <code>$...$</code> 与块级 <code>$$...$$</code>；编辑时显示 LaTeX 源码、失焦渲染（Typora 行为）。</li>
+      <li><b>Mermaid 图表</b> — <code>```mermaid</code> 流程图/时序图/甘特图实时渲染；编辑态显示源码，失焦渲染，右上角「编辑源码」切换。</li>
+      <li><b>Draw.io 流程图（v1.3 探索结论：可行 · 用户需求）</b> — 在文档中一块区域<b>直接嵌入 Draw.io 编辑器</b>就地绘制：插入后图块原位变为编辑画布（完整图形库 / 连接线 / 模板），点「完成并返回」保存渲染为图片；<b>持久化方案</b>：源文件保存为 <code>./diagrams/*.drawio.svg</code>（drawio XML 内嵌于 SVG 元数据），Markdown 以标准图片语法 <code>![](diagrams/flow.drawio.svg)</code> 引用——GitHub 与 VS Code 预览可直接渲染为图，装了 vscode-drawio 插件的环境还能独立二次编辑，天然满足 F06 持久化原则；双击图块随时重回编辑。分工：轻量图用 Mermaid，复杂流程图 / BPMN / 网络拓扑 / UML 用 Draw.io。交互见图 UI-08。</li>
+      <li><b>脚注</b> — <code>[^1]</code> 插入按钮 + 定义跳转；悬停显示脚注内容浮层。</li>
+      <li><b>目录 TOC</b> — 一键插入 <code>&lt;!-- toc --&gt;</code> 标记，按标题层级自动生成/更新；点击项跳转。</li>
+      <li><b>提示面板</b>（P1）— 信息 / 提示 / 警告 / 错误四色面板（对标 Confluence Panels），以带 class 的 HTML <code>&lt;div&gt;</code> 持久化，GitHub 等不支持环境优雅降级为引用块显示。</li>
+      <li><b>HTML 直写</b> — 原生 HTML 片段（&lt;details&gt;、&lt;center&gt;、iframe 视频）安全渲染，白名单制。</li>
+      <li><b>Emoji（用户强调）</b> — 统一 Emoji 面板，Ribbon「插入 → 🙂」与斜杠菜单<b>共用同一面板与同一最近使用记录（MRU）</b>：首行「最近使用」（最多 24 个、持久化到工作区存储、最常用排最前、两入口实时同步），下方分类浏览 + 名称搜索（中英文等权，<code>笑脸</code> = <code>smile</code>）；斜杠菜单内输入 <code>/笑脸</code> 即过滤出对应 emoji，回车直接插入；每次插入自动计入 MRU。插入 Unicode 字符，任何 Markdown 环境可显示。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>公式与图表在导出 HTML/PDF 中同样渲染；HTML 直写在保存后不转义破坏。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F11</span><h3>智能粘贴（Word/Excel/网页 → Markdown）</h3><span class="badge b-p1">P1 · v1.0</span></div>
+    <ul class="dots">
+      <li><b>Word 内容</b> — 标题级别→H1–H6，粗斜下划删除线→对应标记，Word 表格→Markdown 表格，列表→无序/有序，图片→走 F06 落盘流程。</li>
+      <li><b>Excel 表格</b> — 多单元格区域粘贴→Markdown 表格，首行可选为表头；保留数值与简单格式。</li>
+      <li><b>网页 HTML</b> — 结构映射（h1-h6/p/ul/ol/table/a/img/strong/em），去除样式噪声与脚本。</li>
+      <li><b>兜底</b> — 「粘贴为纯文本」右键选项；转换失败时原样保留为纯文本并轻提示。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>典型 Word 周报（标题+列表+表格+截图）整篇复制粘贴，转换后仅需微调。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F12</span><h3>查找替换</h3><span class="badge b-p1">P1 · v1.0</span></div>
+    <ul class="dots">
+      <li><b>功能</b> — <kbd>Ctrl+F</kbd> / <kbd>Ctrl+H</kbd>（可视化模式内）；大小写敏感、全字匹配、正则开关。</li>
+      <li><b>呈现</b> — 命中项黄色高亮、当前项橙色；显示「第 n / N 个」；「替换 / 全部替换」。</li>
+      <li><b>范围</b> — 选区内替换可选；替换操作可撤销。</li>
+    </ul>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F13</span><h3>导出</h3><span class="badge b-p1">P1 · v1.0</span></div>
+    <ul class="dots">
+      <li><b>HTML</b>（P1）— 单文件自包含（内联 CSS、图片 Base64 可选）；内置 3 套排版模板（文档/博客/简历）。</li>
+      <li><b>PDF（用户强调，v1.0 必达）</b> — 基于 Chromium 打印管线；<b>字体子集内嵌</b>（含 F02 自选字体，他机打开不缺字）、<b>图片完整打包</b>（相对路径图片自动嵌入，含持久化校验）；A4 / Letter / Legal、页边距、页眉页脚（文档标题 + 页码）；按标题层级自动生成 PDF 书签；公式与 Mermaid 以渲染结果嵌入；支持「仅导出选中部分」。</li>
+      <li><b>Word docx</b>（P2）— 标题映射 Word 样式、表格转原生表格。</li>
+      <li><b>入口</b> — Ribbon「视图 → 导出」、命令面板、右键菜单；导出成功显示「打开文件 / 打开所在文件夹」通知。</li>
+    </ul>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F14</span><h3>VS Code 集成与设置</h3><span class="badge b-p0">P0 · MVP</span></div>
+    <ul class="dots">
+      <li><b>打开方式</b> — <code>.md</code> 默认用本编辑器打开（设置可改回 VS Code 原生编辑器）；「使用…打开」菜单共存。</li>
+      <li><b>命令面板</b> — 切换模式、插入表格/图片/日期时间、生成 TOC、导出等 12+ 命令（见第 6 节）。</li>
+      <li><b>大纲视图</b> — 侧栏树形展示标题层级，点击跳转、拖拽调整顺序（P1 拖拽）；面包屑显示标题路径。</li>
+      <li><b>状态栏</b> — 行列位置 / 选中字数 / 全文字数 / 当前模式 / 自动保存状态 / <b>Copilot 登录态与模型</b>（未登录时显示「登录 Copilot 启用 AI」，点击跳转登录）（见图 UI-01 ④）。</li>
+      <li><b>主题跟随</b> — 读取 <code>--vscode-*</code> 变量，亮暗主题自动适配，纸张底色可选「白纸/暗夜」。</li>
+      <li><b>界面中英文（用户强调）</b> — 界面完整中英双语，跟随 VS Code 显示语言自动切换（vscode.l10n），设置项 <code>ui.language</code> 可强制 zh-CN / en，切换即时生效无需重启；覆盖 Ribbon 图标 tooltip、斜杠菜单、对话框、右键菜单、状态栏、通知与导出模板文案；斜杠菜单与 Emoji 搜索天然支持中英双语关键词；文档内容本身不受影响。</li>
+      <li><b>快捷键</b> — 全部命令可经 VS Code 键盘映射自定义；默认绑定避开 VS Code 内置冲突。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>卸载插件后文档仍为合法 Markdown；大纲与面包屑随编辑实时更新（&lt;100ms）；界面中英文切换即时生效，抽查 Ribbon tooltip / 对话框 / 状态栏 / 右键菜单无漏译。</div>
+  </div>
+
+  <div class="card feat" style="border-left:4px solid var(--accent2)">
+    <div class="feat-h"><span class="fno">F15</span><h3>AI 助手（GitHub Copilot 驱动）</h3><span class="badge b-p1">P1 · v1.0</span></div>
+    <p>复用 VS Code 中已登录的 GitHub Copilot：经官方 Language Model API（<code>vscode.lm</code>）调用，零密钥、零二次登录、零额外费用配置。原则：AI 只建议，<b>先预览差异、确认后落盘</b>。</p>
+    <ul class="dots">
+      <li><b>身份与模型</b> — 直接使用当前 VS Code 的 Copilot 登录态；状态栏显示当前模型并可切换（GPT / Claude 等，以订阅可用为准）；未登录或企业策略禁用时 AI 入口整体隐藏并提示登录方式，其余功能不受任何影响。</li>
+      <li><b>斜杠菜单 AI 组（/ 唤出）</b> — ① <b>AI 生成本节大纲</b>：基于本节标题与上下文产出小节骨架，逐项勾选插入；② <b>AI 模板创作 ▸</b>：内置模板库（周报 / 会议纪要 / API 文档 / 技术方案 / README），按文档主题生成整节初稿；③ <b>AI 续写</b>：从光标处续写；④ <b>AI 总结全文</b>：在文首插入摘要。交互见图 UI-07 ③。</li>
+      <li><b>选区 AI（选中文字呼出）</b> — 选区浮动工具条 ✨ 按钮 + 右键「AI 改写 / 润色…」+ <kbd>Ctrl+Shift+A</kbd>：改写、润色、扩写、缩写、翻译（中↔英）、修正错别字、自定义指令（输入框，历史指令可复用）。交互见图 UI-07 ①②。</li>
+      <li><b>结果交互（关键设计）</b> — AI 输出一律先入<b>差异预览卡</b>：原文红底删除线、建议绿底；操作：✅ 接受（写入前强制过 Markdown 归一化，杜绝 HTML 残留）、🔄 重试、✏️ 追加指令（如「更正式一点」）、✕ 放弃；流式生成中可随时停止；显示耗时与字数变化。</li>
+      <li><b>上下文策略</b> — 选区操作附带：选中文本 + 所在节标题链 + 文档大纲；全文级操作只附大纲以控制 token；超长自动截断并提示。</li>
+      <li><b>隐私与合规</b> — 不经任何第三方服务，请求仅走 Copilot 官方通道；AI 功能与核心功能彻底解耦，可整体关闭。</li>
+      <li><span class="badge b-p2">P2</span> — 自定义指令库管理界面、AI 文本→Mermaid 图表、整篇风格统一改写、AI 表格数据填充。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>未登录 Copilot 时无报错、AI 入口隐藏；「选中一句 → ✨ 润色 → 接受」≤ 3 次点击 + 1 次确认；AI 写入内容 100% 为合法 Markdown；生成中断不丢原文。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F16</span><h3>页面设置与外观（Word 式 Page Setup）</h3><span class="badge b-p1">P1 · v1.7</span></div>
+    <p>对标 Word「页面设置」与「页面颜色」：可调整编辑区纸张的尺寸（内容流式重排）与页面外观（背景色 + 条纹）。核心原则：<b>两者均为视图层设置，按工作区持久化，绝不写入 Markdown 文档</b>——换台机器或仓库他人打开，文档内容与源码完全不受影响（与 F02 字体持久化到 HTML 的策略刻意区分）。</p>
+    <ul class="dots">
+      <li><b>页面尺寸（用户强调）</b> — 默认<b>适应屏幕</b>：纸张宽度 = 视口宽度 − 边距（上限 1200px），窗口缩放自动跟随；可选常见纸张（96dpi 像素换算）：<table class="tbl" style="margin:8px 0"><tr><th>纸张</th><th>尺寸</th><th>编辑区宽度</th></tr><tr><td>A3</td><td>297mm</td><td>1123px</td></tr><tr><td><b>A4（最常用）</b></td><td>210mm</td><td>794px</td></tr><tr><td>A5</td><td>148mm</td><td>559px</td></tr><tr><td>B5</td><td>176mm</td><td>667px</td></tr><tr><td>Letter</td><td>8.5in</td><td>816px</td></tr><tr><td>Legal</td><td>8.5in 宽</td><td>816px</td></tr><tr><td>自定义</td><td>—</td><td>像素 / 厘米输入（400–1600px）</td></tr></table></li>
+      <li><b>内容跟随重排（用户强调）</b> — 切换尺寸后内容<b>流式重排</b>：段落自动换行、表格按 <code>max-width:100%</code> 收缩列宽、图片按百分比宽度等比缩放、代码块保持等宽不折行（横向滚动）；重排即时生效无闪烁（纯 CSS，无重新解析）。</li>
+      <li><b>背景色</b> — 预设色板：跟随主题（默认：亮白 / 暗黑自动）/ 纯白 / <b>护眼绿 #C7EDCC</b> / 羊皮纸 #F5EFDC / 冰蓝 #E8F4F8 / 豆沙绿 / 自定义（系统取色器）；暗色主题下提供对应的深色变体（深护眼 #2D423A 等）；全文统一，不做局部背景。</li>
+      <li><b>条纹</b> — 四种：<b>无</b>（默认）/ <b>横线</b>（信纸效果，条纹间距 = 行高整数倍，避免文字压线错位）/ <b>方格</b>（横竖网格，间距 24px）/ <b>点阵</b>；以 <code>repeating-linear-gradient</code> 与背景色叠加渲染，条纹颜色自动取背景色的对比色（约 8% 透明度）。</li>
+      <li><b>作用范围</b> — 仅影响屏幕显示；导出 PDF / HTML 时可选「包含页面背景与条纹」（默认<b>不包含</b>，保持交付文档纯净）；导出 PDF 默认采用当前页面尺寸（导出对话框可覆盖，见 F13）。</li>
+      <li><b>入口</b> — Ribbon「视图 → 页面设置」（下拉快选纸张 + 外观）与完整「页面设置…」对话框；状态栏显示当前纸张（如「A4」/「适应屏幕」），点击直达；设置项 <code>markdownWord.page.*</code> 按工作区持久化。交互见图 UI-09。</li>
+      <li><b>与缩放的关系</b> — 页面尺寸改变<b>纸张宽度</b>（重排），视图缩放（A⁻/A⁺）改变<b>显示比例</b>（不重排），两者独立叠加，与 Word 行为一致。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>A4 ↔ 适应屏幕 ↔ A5 来回切换，段落换行与表格收缩正确、无内容丢失；设置后关闭重开保持；导出的 .md 源码 diff 为空（零污染）；护眼绿 + 横线组合下行高与条纹对齐不错位。</div>
+  </div>
+</section>
+
+<!-- ================= 4 UI 设计 ================= -->
+<section id="s4">
+  <h2 class="sec"><span class="sec-no">4</span>UI 设计</h2>
+  <p class="sec-lead">整体布局 = VS Code 框架 + Word Ribbon + 纸张化编辑区。以下 mockup 为可交互示意（Ribbon 页签可点击切换、表格网格可悬停、斜杠菜单可输入过滤）。v1.1：Confluence 式斜杠菜单、AI 交互（UI-07）、字体选择器。v1.2：Ribbon 恒定两行、字体中英分设。v1.3：工具栏全面图标化、Emoji 面板（MRU）、Draw.io 嵌入（UI-08）。</p>
+
+  <!-- UI-01 主布局 -->
+  <h3 class="sub">UI-01 整体布局与主编辑视图</h3>
+  <div class="card">
+    <div class="vs">
+      <div class="vs-title">
+        <div class="dots3"><i></i><i></i><i></i></div>
+        <span>发布计划.md — Markdown Word — Visual Studio Code</span>
+      </div>
+      <div class="vs-body">
+        <div class="vs-act">
+          <div class="ai tbi">📄</div><div class="ai tbi on">🗂</div><div class="ai tbi">🔍</div><div class="ai tbi">⑂</div><div class="ai tbi">🧩</div>
+        </div>
+        <div class="vs-side">
+          <h5>大纲 · OUTLINE</h5>
+          <div class="vs-search">🔍 搜索标题…</div>
+          <div class="tree">
+            <div class="t on"><span class="car">▾</span>产品发布计划</div>
+            <div class="t lv1"><span class="car">·</span>背景与目标</div>
+            <div class="t lv1"><span class="car">▾</span>里程碑计划</div>
+            <div class="t lv2"><span class="car">·</span>阶段排期</div>
+            <div class="t lv1"><span class="car">▾</span>风险与对策</div>
+            <div class="t lv2"><span class="car">·</span>技术风险</div>
+          </div>
+        </div>
+        <div class="vs-main">
+          <div class="vs-tabs">
+            <div class="vs-tab on">发布计划.md <span class="x">✕</span></div>
+            <div class="vs-tab">README.md <span class="x">✕</span></div>
+          </div>
+
+          <!-- Ribbon：可交互 -->
+          <div class="ribbon" id="ribbon">
+            <div class="rtabs">
+              <div class="rtab active" data-panel="rp-home">开始</div>
+              <div class="rtab" data-panel="rp-ins">插入</div>
+              <div class="rtab" data-panel="rp-tbl">表格 <span class="ctx">选中表格时</span></div>
+              <div class="rtab" data-panel="rp-view">视图</div>
+            </div>
+            <div class="rpanel active" id="rp-home">
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="粘贴（▾ 内含剪切 / 复制 / 格式刷）· Ctrl+V"><span class="ic tbi">📋</span>▾</div>
+              </div><div class="rg-label">剪贴板</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center;gap:3px">
+                <span class="fddl" title="西文字体（拉丁字符与数字）">Aa 西文 ▾</span>
+                <span class="fddl" title="中文字体（CJK 字符）">汉 中 ▾</span>
+                <span class="fddl" title="字号">15 ▾</span>
+                <span class="fsep"></span>
+                <div class="rb small" title="加粗 · Ctrl+B"><span class="ic b">B</span></div>
+                <div class="rb small" title="斜体 · Ctrl+I"><span class="ic i">I</span></div>
+                <div class="rb small" title="下划线"><span class="ic u">U</span></div>
+                <div class="rb small" title="删除线"><span class="ic s">S</span></div>
+                <div class="rb small" title="高亮 ==文本==（荧光笔）"><span class="ic hl"><span>A</span></span></div>
+                <div class="rb small" title="行内代码 · Ctrl+`（恒为等宽字体）"><span class="ic code">&lt;/&gt;</span></div>
+                <div class="rb small" title="更多格式（上标 / 下标 / 清除格式）"><span class="ic">⋯</span></div>
+              </div><div class="rg-label">字体（中英分设）</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="无序列表 · Ctrl+Shift+8"><span class="ic">•≡</span></div>
+                <div class="rb small" title="有序列表 · Ctrl+Shift+7"><span class="ic">1.≡</span></div>
+                <div class="rb small" title="任务列表 · Ctrl+Shift+9"><span class="ic">☑</span></div>
+                <div class="rb small" title="减少缩进 · Shift+Tab"><span class="ic">⇤</span></div>
+                <div class="rb small" title="增加缩进 · Tab"><span class="ic">⇥</span></div>
+                <div class="rb small" title="引用块 · Ctrl+Shift+Q"><span class="ic tbi">❝</span></div>
+              </div><div class="rg-label">段落</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small on" title="正文样式"><span class="ic">¶</span></div>
+                <div class="rb small" title="标题 1 · Ctrl+1"><b style="font-size:15px">H1</b></div>
+                <div class="rb small" title="标题 2 · Ctrl+2"><b style="font-size:14px">H2</b></div>
+                <div class="rb small" title="标题 3 · Ctrl+3"><b style="font-size:13px">H3</b></div>
+                <div class="rb small" title="标题 4–6 · Ctrl+4…6">H▾</div>
+              </div><div class="rg-label">快速样式</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="查找 · Ctrl+F"><span class="ic">🔍</span></div>
+                <div class="rb small" title="替换 · Ctrl+H"><span class="ic">⇄</span></div>
+              </div><div class="rg-label">编辑</div></div>
+            </div>
+
+            <div class="rpanel" id="rp-ins">
+              <div class="rg"><div class="rg-row" style="align-items:center;gap:3px">
+                <div class="rb small" title="插入表格（网格选择器）· Ctrl+Alt+T"><span class="ic">▦</span>▾</div>
+                <div class="rb small" title="插入图片（本地 / 剪贴板 / URL）"><span class="ic tbi">🖼</span>▾</div>
+                <div class="rb small" title="插入链接 · Ctrl+K"><span class="ic">🔗</span></div>
+              </div><div class="rg-label">常用插入</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="代码块（30+ 语言含 PL/SQL）· Ctrl+Shift+K"><span class="ic code">{ }</span></div>
+                <div class="rb small" title="数学公式（KaTeX）"><span class="ic">∑</span></div>
+                <div class="rb small" title="Mermaid 图表（文本转图）"><span class="ic">◈</span></div>
+                <div class="rb small" title="Draw.io 流程图（就地绘制，保存为 .drawio.svg）"><span class="ic">⬡</span></div>
+              </div><div class="rg-label">图表与代码</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="分割线"><span class="ic">――</span></div>
+                <div class="rb small" title="脚注"><span class="ic">⊕</span></div>
+                <div class="rb small" title="目录 TOC"><span class="ic">☰</span></div>
+                <div class="rb small" title="Emoji（最近使用置顶）"><span class="ic tbi">🙂</span></div>
+                <div class="rb small" title="插入当前日期时间"><span class="ic tbi">📅</span></div>
+              </div><div class="rg-label">其他</div></div>
+            </div>
+
+            <div class="rpanel" id="rp-tbl">
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="上方插入行"><span class="ic">↥</span></div>
+                <div class="rb small" title="下方插入行"><span class="ic">↧</span></div>
+                <div class="rb small danger" title="删除行"><span class="ic">✕≡</span></div>
+                <span class="fsep"></span>
+                <div class="rb small" title="左侧插入列"><span class="ic">↤</span></div>
+                <div class="rb small" title="右侧插入列"><span class="ic">↦</span></div>
+                <div class="rb small danger" title="删除列"><span class="ic">✕▥</span></div>
+              </div><div class="rg-label">行列增删</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="整列左对齐"><span class="ic">≡</span></div>
+                <div class="rb small on" title="整列居中"><span class="ic">≣</span></div>
+                <div class="rb small" title="整列右对齐"><span class="ic">≣</span></div>
+              </div><div class="rg-label">对齐（按列）</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small on" title="切换表头行"><span class="ic">☑</span></div>
+                <div class="rb small" title="移动行 / 移动列 ▾"><span class="ic">⇅⇔</span>▾</div>
+              </div><div class="rg-label">结构</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small danger" title="删除整个表格"><span class="ic tbi">🗑</span></div>
+              </div><div class="rg-label">表格</div></div>
+            </div>
+
+            <div class="rpanel" id="rp-view">
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small on" title="所见即所得模式 · Ctrl+Alt+V 循环切换"><span class="ic tbi">🖋</span></div>
+                <div class="rb small" title="源码模式"><span class="ic code">&lt;/&gt;</span></div>
+                <div class="rb small" title="分屏模式（左源码右渲染）"><span class="ic">▤</span></div>
+              </div><div class="rg-label">编辑模式</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small on" title="大纲面板"><span class="ic tbi">🗂</span></div>
+                <div class="rb small on" title="面包屑"><span class="ic">⌂</span></div>
+                <div class="rb small on" title="字数统计"><span class="ic">#</span></div>
+                <div class="rb small on" title="分屏同步滚动"><span class="ic">⇅</span></div>
+              </div><div class="rg-label">显示</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center;gap:3px">
+                <div class="rb small" title="缩小字号"><span class="ic">A⁻</span></div>
+                <span class="fddl">100% ▾</span>
+                <div class="rb small" title="放大字号"><span class="ic">A⁺</span></div>
+              </div><div class="rg-label">缩放</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center;gap:3px">
+                <div class="rb small" title="页面设置：纸张尺寸（适应屏幕 / A4 / A3 / A5 / B5 / Letter / Legal / 自定义），切换后内容流式重排（F16）"><span class="ic tbi">📄</span>▾</div>
+                <span class="fddl" title="当前纸张尺寸，点击快选">适应屏幕</span>
+                <div class="rb small" title="页面外观：背景色（护眼绿 / 羊皮纸 / 冰蓝 / 自定义）与条纹（横线 / 方格 / 点阵）（F16）"><span class="ic tbi">🎨</span></div>
+              </div><div class="rg-label">页面（v1.7）</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="主题：跟随 VS Code ▾"><span class="ic tbi">🎨</span>▾</div>
+                <div class="rb small" title="界面语言：中文 / English ▾（用户强调）"><span class="ic tbi">🌐</span>▾</div>
+              </div><div class="rg-label">主题与语言</div></div>
+              <div class="rg"><div class="rg-row" style="align-items:center">
+                <div class="rb small" title="导出 HTML"><span class="ic tbi">🌐</span></div>
+                <div class="rb small" title="导出 PDF（字体内嵌 / 书签 / 页码）"><span class="ic tbi">📄</span></div>
+              </div><div class="rg-label">导出</div></div>
+            </div>
+          </div>
+
+          <!-- 编辑区 -->
+          <div class="vs-edit">
+            <div class="paper-wrap">
+              <div style="position:relative;width:100%;display:flex;justify-content:center">
+                <div class="tag" style="top:8px;left:8px">1</div>
+                <div class="tag" style="top:52px;left:-10px">2</div>
+                <div class="tag" style="top:340px;left:-10px">5</div>
+                <div class="tag" style="bottom:120px;right:-10px">6</div>
+                <div class="paper">
+                  <h1>产品发布计划</h1>
+                  <p>本计划覆盖 Q3 发布的<strong>核心目标</strong>、里程碑与风险。详细排期见 <a href="#">项目看板</a>，接口约定以 <code>api-spec.md</code> 为准，<del>旧版文档</del> 已废弃，重点事项已<mark>高亮标注</mark>。</p>
+                  <blockquote>发布窗口：9 月 28 日 22:00 – 次日 02:00；回滚预案由运维组值守。</blockquote>
+                  <h2>里程碑计划</h2>
+                  <div class="md-table-wrap">
+                    <div class="tt-bar">
+                      <span class="tt-b">＋ 行</span><span class="tt-b">＋ 列</span><span class="tt-b">🗑</span>
+                      <span class="tt-sep"></span>
+                      <span class="tt-b">≡ 左</span><span class="tt-b">≣ 中</span><span class="tt-b">≣ 右</span>
+                      <span class="tt-sep"></span><span class="tt-b">⋯</span>
+                    </div>
+                    <table class="md-table">
+                      <tr><th>阶段</th><th>时间</th><th>负责人</th><th>状态</th></tr>
+                      <tr><td>需求评审</td><td>08-25</td><td>张伟</td><td><span class="dot g"></span>完成</td></tr>
+                      <tr class="sel-row"><td>UI 设计</td><td>09-02</td><td>李娜</td><td><span class="dot y"></span>进行中</td></tr>
+                      <tr><td>开发联调</td><td>09-20</td><td>王强</td><td><span class="dot gr"></span>未开始</td></tr>
+                    </table>
+                  </div>
+                  <ul class="task">
+                    <li><span>☑</span>冻结需求范围</li>
+                    <li><span>☐</span>完成灰度发布</li>
+                  </ul>
+                  <div class="codebox">
+                    <div class="cb-h"><span class="lang">PL/SQL (Oracle)</span><span>⧉ 复制</span></div>
+                    <pre><span class="kw">CREATE OR REPLACE PROCEDURE</span> audit_publish(p_id <span class="kw">NUMBER</span>) <span class="kw">IS</span>
+  v_status VARCHAR2(20);  <span class="cm">-- 恒为等宽字体，与正文分设</span>
+<span class="kw">BEGIN</span>
+  <span class="kw">SELECT</span> status <span class="kw">INTO</span> v_status <span class="kw">FROM</span> releases <span class="kw">WHERE</span> id = p_id;
+<span class="kw">END</span>;</pre>
+                  </div>
+                  <div class="img-ph">
+                    <span>🖼 架构图.png（选中状态 · 拖动四角缩放）</span>
+                    <i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i>
+                    <div class="img-pill">宽度 <b>60%</b> · 对齐 <b>居中</b> · 替换 · 另存为</div>
+                  </div>
+                  <hr>
+                  <p style="color:#94a3b8;font-size:12px">— 继续输入正文，键入 <b style="color:var(--accent)">/</b> 唤出块菜单 —</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="vs-status">
+            <span class="l">💾 自动保存：已保存</span>
+            <span class="l">行 14，列 8</span>
+            <span class="l">选中 24 字</span>
+            <span class="grow"></span>
+            <span class="r">全文 3,542 字</span>
+            <span class="r" title="页面尺寸（点击打开页面设置）">📄 适应屏幕</span>
+            <span class="r">✨ Copilot · GPT-5</span>
+            <span class="r">所见即所得 ▾</span>
+            <span class="r">Markdown Word v1.0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tag" style="position:relative;display:inline-grid;margin:16px 6px 0 0">3</div>
+    <div class="tag" style="position:relative;display:inline-grid;margin:16px 6px 0 0">4</div>
+    <ul class="legend">
+      <li><span class="tag">1</span><b>Ribbon 工具栏（恒定两行 · 图标化 · 用户强调）</b>：第 1 行页签（开始 / 插入 / 表格-上下文 / 视图），第 2 行为当前页签的<b>单行纯图标工具组</b>（含底部微字组标签辅助识别）；按钮悬停 tooltip 显示中文名 + 快捷键（本图为静态示意，请将就 title 属性 😄）；仅语义模糊的下拉 / 开关保留极短文字（如「Aa 西文 ▾」）—— 可点击上方页签切换预览。</li>
+      <li><span class="tag">2</span><b>纸张化编辑区</b>：居中白纸 + 阴影，营造 Word 页面感；宽度可在设置中调整或改为通栏。</li>
+      <li><span class="tag">3</span><b>大纲侧栏</b>：标题树，点击跳转，与 VS Code 面板一致。</li>
+      <li><span class="tag">4</span><b>状态栏</b>：位置 / 字数 / 模式 / 保存状态。</li>
+      <li><span class="tag">5</span><b>表格浮动工具条</b>：光标进入表格时出现在表格上方，常用行列操作一步直达。</li>
+      <li><span class="tag">6</span><b>图片选中态</b>：四角手柄缩放 + 底部胶囊（宽度/对齐/替换/另存为）。</li>
+    </ul>
+  </div>
+
+  <!-- UI-02 表格创建 -->
+  <h3 class="sub">UI-02 表格创建：网格选择器 + 自定义对话框</h3>
+  <div class="grid2">
+    <div class="card" style="display:grid;place-items:center">
+      <div>
+        <p class="fig-title">① 悬停网格选择器（Ribbon「插入 → 表格」下拉）</p>
+        <div class="tp">
+          <div class="tp-label" id="tp-label">移动鼠标选择行列</div>
+          <div class="tp-grid" id="tp-grid"></div>
+          <div class="tp-more">插入表格…（自定义行列）</div>
+        </div>
+        <p class="fig-note">默认 8 列 × 6 行，悬停高亮并显示「列 × 行」；点击即插入带表头的表格（本页为演示，可实际悬停体验）。</p>
+      </div>
+    </div>
+    <div class="card" style="display:grid;place-items:center">
+      <div>
+        <p class="fig-title">② 「插入表格…」自定义对话框</p>
+        <div class="dlg">
+          <div class="dlg-h">插入表格 <span class="x">✕</span></div>
+          <div class="dlg-b">
+            <div class="frow"><label>行数（含表头）</label><div class="ctl spin"><button>−</button><input value="5"><button>＋</button></div></div>
+            <div class="frow"><label>列数</label><div class="ctl spin"><button>−</button><input value="4"><button>＋</button></div></div>
+            <div class="frow"><label>表头</label><div class="ctl radio-line"><span>☑ 首行作为表头</span></div></div>
+            <div class="frow"><label>默认对齐</label><div class="ctl"><select class="in"><option>左对齐（推荐）</option><option>居中</option><option>右对齐</option></select></div></div>
+          </div>
+          <div class="dlg-f"><button class="btn">取消</button><button class="btn pri">插入</button></div>
+        </div>
+        <p class="fig-note">大表（&gt;6 行或 &gt;8 列）走此入口；数字可直接键入，支持 ↑↓ 微调。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI-03 斜杠菜单 -->
+  <h3 class="sub">UI-03 斜杠命令菜单「 / 」（Confluence 式）</h3>
+  <div class="card">
+    <div class="grid2">
+    <div class="slash-stage">
+      <div class="sd-line">
+        本季度我们将重点推进以下事项<span class="sd-slash">/</span><input class="sd-input" id="slash-input" placeholder="输入过滤，如：表格" autocomplete="off"><span class="caret"></span>
+      </div>
+      <div class="slash">
+        <ul id="slash-list">
+          <li class="sg">✨ AI 助手 · GitHub Copilot</li>
+          <li class="si" data-kw="ai 大纲 outline 生成 dagang"><span class="si-ic" style="background:#ede9fe;color:#6d28d9">✨</span><div><div class="si-t">AI 生成本节大纲</div><div class="si-d">基于本节标题与上下文产出小节结构</div></div></li>
+          <li class="si" data-kw="ai 模板 template moban 周报 纪要 创作"><span class="si-ic" style="background:#ede9fe;color:#6d28d9">🧩</span><div><div class="si-t">AI 模板创作 <span style="color:#94a3b8">▸</span></div><div class="si-d">周报 / 会议纪要 / API 文档 / README…</div></div></li>
+          <li class="si" data-kw="ai 续写 xuxie continue 写作"><span class="si-ic" style="background:#ede9fe;color:#6d28d9">✍️</span><div><div class="si-t">AI 续写</div><div class="si-d">从光标处继续写作</div></div></li>
+          <li class="sg">基础块</li>
+          <li class="si active" data-kw="h1 标题 大标题 heading biaoti"><span class="si-ic">H1</span><div><div class="si-t">标题 1</div><div class="si-d">大标题 · 输入 # + 空格</div></div><kbd>Ctrl+1</kbd></li>
+          <li class="si" data-kw="h2 标题 heading biaoti"><span class="si-ic">H2</span><div><div class="si-t">标题 2</div><div class="si-d">章节标题</div></div><kbd>Ctrl+2</kbd></li>
+          <li class="si" data-kw="h3 标题 heading biaoti"><span class="si-ic">H3</span><div><div class="si-t">标题 3</div><div class="si-d">小节标题</div></div><kbd>Ctrl+3</kbd></li>
+          <li class="si" data-kw="文本 正文 段落 text para"><span class="si-ic">¶</span><div><div class="si-t">正文</div><div class="si-d">普通段落文本</div></div></li>
+          <li class="si" data-kw="引用 quote blockquote yinyong"><span class="si-ic tbi">❝</span><div><div class="si-t">引用块</div><div class="si-d">引用一段文字</div></div></li>
+          <li class="si" data-kw="分割线 水平线 hr fengexian"><span class="si-ic">――</span><div><div class="si-t">分割线</div><div class="si-d">水平分隔线</div></div></li>
+          <li class="si" data-kw="代码块 code block daima"><span class="si-ic code">{ }</span><div><div class="si-t">代码块</div><div class="si-d">带语法高亮的代码</div></div><kbd>Ctrl+Shift+K</kbd></li>
+          <li class="si" data-kw="公式 数学 katex math gongshi"><span class="si-ic">∑</span><div><div class="si-t">数学公式</div><div class="si-d">块级 KaTeX 公式</div></div></li>
+          <li class="sg">列表</li>
+          <li class="si" data-kw="无序列表 bullet list liebiao ul"><span class="si-ic">• ≡</span><div><div class="si-t">无序列表</div><div class="si-d">项目符号列表</div></div><kbd>Ctrl+Shift+8</kbd></li>
+          <li class="si" data-kw="有序列表 numbered list liebiao ol"><span class="si-ic">1. ≡</span><div><div class="si-t">有序列表</div><div class="si-d">编号列表</div></div><kbd>Ctrl+Shift+7</kbd></li>
+          <li class="si" data-kw="任务列表 待办 checkbox todo renwu"><span class="si-ic">☑</span><div><div class="si-t">任务列表</div><div class="si-d">可勾选的待办</div></div><kbd>Ctrl+Shift+9</kbd></li>
+          <li class="sg">媒体与插入</li>
+          <li class="si" data-kw="表格 table biaoge"><span class="si-ic">▦</span><div><div class="si-t">表格</div><div class="si-d">插入后输入行列数</div></div><kbd>Ctrl+Alt+T</kbd></li>
+          <li class="si" data-kw="图片 image tupian"><span class="si-ic tbi">🖼</span><div><div class="si-t">图片</div><div class="si-d">本地 / 剪贴板 / URL</div></div></li>
+          <li class="si" data-kw="链接 link lianjie"><span class="si-ic">🔗</span><div><div class="si-t">链接</div><div class="si-d">插入超链接</div></div><kbd>Ctrl+K</kbd></li>
+          <li class="si" data-kw="mermaid 图表 chart flowchart tubiao"><span class="si-ic">◈</span><div><div class="si-t">Mermaid 图表</div><div class="si-d">文本转流程图 / 时序图</div></div></li>
+          <li class="si" data-kw="drawio 流程图 绘图 diagram liuchengtu"><span class="si-ic">⬡</span><div><div class="si-t">Draw.io 流程图</div><div class="si-d">就地绘制 · 保存为 .drawio.svg</div></div></li>
+          <li class="si" data-kw="脚注 footnote jiaozhu"><span class="si-ic">⊕</span><div><div class="si-t">脚注</div><div class="si-d">页面底部注释</div></div></li>
+          <li class="si" data-kw="目录 toc mulu"><span class="si-ic">☰</span><div><div class="si-t">目录</div><div class="si-d">按标题自动生成</div></div></li>
+          <li class="sg">高级</li>
+          <li class="si" data-kw="面板 panel mianban 信息 提示 警告 callout"><span class="si-ic">▤</span><div><div class="si-t">面板 <span style="color:#94a3b8">▸</span></div><div class="si-d">信息 / 提示 / 警告 / 错误提示框</div></div></li>
+          <li class="si" data-kw="html 块 原生"><span class="si-ic code">&lt;html&gt;</span><div><div class="si-t">HTML 块</div><div class="si-d">直写原生 HTML 片段</div></div></li>
+          <li class="s-empty">没有匹配项 —— 继续输入以查找操作…</li>
+        </ul>
+        <div class="s-hint"><span><kbd>↑</kbd><kbd>↓</kbd> 导航</span><span><kbd>→</kbd> 子菜单</span><span><kbd>Enter</kbd> 插入</span><span><kbd>Esc</kbd> 关闭</span></div>
+      </div>
+    </div>
+    <div>
+      <p class="fig-title">子菜单展开态（<kbd>→</kbd> 或悬停展开）</p>
+      <div style="width:250px;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 36px rgba(15,23,42,.18);padding:6px">
+        <div style="font-size:10.5px;color:#94a3b8;padding:8px 12px 3px;font-weight:700;letter-spacing:.08em">✨ AI 模板创作</div>
+        <div class="mi">📊 周报模板</div>
+        <div class="mi">📝 会议纪要</div>
+        <div class="mi">🔌 API 文档</div>
+        <div class="mi">🏗 技术方案</div>
+        <div class="mi">📖 README</div>
+        <div class="mi">☰ 空模板（不调用 AI）</div>
+      </div>
+      <p class="fig-title" style="margin-top:18px">「面板」子菜单（四色提示框）</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span style="background:#dbeafe;color:#1d4ed8;border-radius:99px;padding:3px 12px;font-size:12px">ℹ 信息</span>
+        <span style="background:#ccfbf1;color:#0f766e;border-radius:99px;padding:3px 12px;font-size:12px">💡 提示</span>
+        <span style="background:#fef3c7;color:#92400e;border-radius:99px;padding:3px 12px;font-size:12px">⚠ 警告</span>
+        <span style="background:#fee2e2;color:#b91c1c;border-radius:99px;padding:3px 12px;font-size:12px">✕ 错误</span>
+      </div>
+      <p class="fig-note">面板对标 Confluence Panels：以带 class 的 HTML <code>&lt;div&gt;</code> 持久化，GitHub 等不支持的环境优雅降级为引用块显示。</p>
+      <p class="fig-title" style="margin-top:18px">Emoji 面板（Ribbon 与 / 菜单共用 · MRU 置顶）</p>
+      <div style="width:250px;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 36px rgba(15,23,42,.18);padding:10px">
+        <div style="font-size:10.5px;color:#94a3b8;font-weight:700;letter-spacing:.06em;margin-bottom:5px">最近使用（两入口实时同步）</div>
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-bottom:8px;font-size:16px;text-align:center">
+          <span>✅</span><span>🎉</span><span>🚀</span><span>📌</span><span>⚠️</span><span>🔥</span><span>📅</span><span>❤️</span>
+        </div>
+        <div style="font-size:10.5px;color:#94a3b8;font-weight:700;letter-spacing:.06em;margin-bottom:5px">分类</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;font-size:12px;color:#475569">
+          <span style="background:#f1f5f9;border-radius:99px;padding:2px 9px">😀 笑脸</span>
+          <span style="background:#f1f5f9;border-radius:99px;padding:2px 9px">🙌 手势</span>
+          <span style="background:#f1f5f9;border-radius:99px;padding:2px 9px">📌 标记</span>
+          <span style="background:#f1f5f9;border-radius:99px;padding:2px 9px">🚗 交通</span>
+        </div>
+        <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:7px;font-size:11.5px;color:#94a3b8">🔍 搜索：中文「笑脸」= 英文「smile」均可命中；插入后自动计入最近使用</div>
+      </div>
+    </div>
+    </div>
+    <p class="fig-note">上图为可交互演示：在输入框打字（如「ai」「表」「list」）体验过滤。对齐 Confluence 的四点：① 任意位置输入 <b>/</b> 即唤出（本例在句中触发，不要求空行）；② 首组固定为 ✨ AI 助手；③ 支持 <b>▸ 二级子菜单</b>（<kbd>→</kbd> 或悬停展开，见右侧）；④ 无匹配时显示「继续输入以查找操作…」兜底入口。选中「表格」后进入行列输入态（如 <b>4×3</b> + Enter）。</p>
+  </div>
+
+  <!-- UI-04 浮动工具栏 -->
+  <h3 class="sub">UI-04 选区浮动工具栏与右键菜单</h3>
+  <div class="grid2">
+    <div class="card" style="display:grid;place-items:center;min-height:220px">
+      <div>
+        <p class="fig-title">选中文字时，选区上方浮现迷你格式条</p>
+        <div style="padding-top:46px">
+          <div class="ft-bar">
+            <div class="ft-pop">
+              <span class="ft-b">B</span><span class="ft-b"><i>I</i></span><span class="ft-b"><s>S</s></span><span class="ft-b code" style="font-family:Consolas">&lt;/&gt;</span>
+              <span class="ft-sep"></span>
+              <span class="ft-b">🔗</span><span class="ft-b" style="font-size:11px">高亮</span>
+              <span class="ft-sep"></span>
+              <span class="ft-b" style="font-size:11px">H2 ▾</span>
+              <span class="ft-sep"></span>
+              <span class="ft-b" title="Ctrl+Shift+A" style="background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;border-radius:7px;padding:0 9px;font-size:11px">✨ AI</span>
+            </div>
+            实验结论：新排版引擎使<span class="sel-txt">首屏渲染时间缩短了 42%</span>，且内存占用持平。
+          </div>
+        </div>
+        <p class="fig-note">选区存在 &gt; 300ms 后淡入；移开后 500ms 淡出；不遮挡选区上一行时自动上浮一位。✨ AI 按钮打开选区 AI 菜单（改写 / 润色 / 翻译…，见图 UI-07 ①）。</p>
+      </div>
+    </div>
+    <div class="card" style="display:grid;place-items:center">
+      <div>
+        <p class="fig-title">右键菜单（随上下文变化）</p>
+        <div style="width:250px;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 36px rgba(15,23,42,.18);padding:6px;font-size:13px;color:#334155">
+          <div class="mi">✂ 剪切&nbsp;&nbsp;&nbsp;<span style="float:right;color:#94a3b8">Ctrl+X</span></div>
+          <div class="mi">⧉ 复制&nbsp;&nbsp;&nbsp;<span style="float:right;color:#94a3b8">Ctrl+C</span></div>
+          <div class="mi">📋 粘贴为纯文本</div>
+          <div class="mi">📄 复制为 Markdown 源码</div>
+          <div class="mi" style="color:#7c3aed;font-weight:600">✨ AI 改写 / 润色…</div>
+          <div style="height:1px;background:var(--line);margin:5px 8px"></div>
+          <div class="mi">插入&nbsp;<span style="float:right;color:#94a3b8">▸</span></div>
+          <div class="mi" style="color:var(--accent)">▦ 表格操作&nbsp;<span style="float:right;color:#94a3b8">▸</span></div>
+          <div class="mi">🖼 图片操作&nbsp;<span style="float:right;color:#94a3b8">▸</span></div>
+          <div style="height:1px;background:var(--line);margin:5px 8px"></div>
+          <div class="mi">🔍 查找替换&nbsp;<span style="float:right;color:#94a3b8">Ctrl+H</span></div>
+        </div>
+        <style>.mi{padding:7px 12px;border-radius:7px;cursor:default}.mi:hover{background:var(--accent-light)}</style>
+        <p class="fig-note">在表格内出现「表格操作」子菜单（插删行列/对齐）；在图片上出现「图片操作」（替换/另存/缩放 50%|100%）。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI-05 对话框 -->
+  <h3 class="sub">UI-05 关键对话框：链接与图片</h3>
+  <div class="grid2">
+    <div class="card" style="display:grid;place-items:center">
+      <div>
+        <p class="fig-title">插入 / 编辑链接（Ctrl+K）</p>
+        <div class="dlg">
+          <div class="dlg-h">插入链接 <span class="x">✕</span></div>
+          <div class="dlg-b">
+            <div class="frow"><label>显示文本</label><div class="ctl"><input class="in" value="项目看板"></div></div>
+            <div class="frow"><label>URL</label><div class="ctl"><input class="in" value="https://example.com/board"></div></div>
+            <div class="frow"><label>悬停标题</label><div class="ctl"><input class="in" placeholder="title（可选）"></div></div>
+            <div class="hint-tip">支持页内锚点：输入 # 后自动补全本文档标题</div>
+          </div>
+          <div class="dlg-f"><button class="btn txt-danger">移除链接</button><span style="flex:1"></span><button class="btn">取消</button><button class="btn pri">确定</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="display:grid;place-items:center">
+      <div>
+        <p class="fig-title">插入图片（三来源 + 落盘策略）</p>
+        <div class="dlg">
+          <div class="dlg-h">插入图片 <span class="x">✕</span></div>
+          <div class="dlg-b">
+            <div class="dlg-tabs"><span class="dlg-tab">本地文件</span><span class="dlg-tab on">图片 URL</span><span class="dlg-tab">剪贴板</span></div>
+            <div class="frow"><label>图片地址</label><div class="ctl"><input class="in" placeholder="https://… 或拖入文件"></div></div>
+            <div class="frow"><label>替代文本</label><div class="ctl"><input class="in" placeholder="alt（可选，利于无障碍）"></div></div>
+            <div class="frow"><label>显示宽度</label><div class="ctl range"><input type="range" min="25" max="100" value="60"><b>60%</b></div></div>
+            <div class="frow"><label>保存方式</label><div class="ctl radio-line"><span>◉ 复制到 ./images</span><span>○ 同目录</span><span>○ Base64 内嵌</span></div></div>
+          </div>
+          <div class="dlg-f"><button class="btn">取消</button><button class="btn pri">插入</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI-06 主题 -->
+  <h3 class="sub">UI-06 主题适配：亮 / 暗</h3>
+  <div class="grid2">
+    <div class="theme-card theme-light">
+      <h5>☀ 亮色（跟随 VS Code Light / 白纸模式）</h5>
+      <p>纸张纯白、文字 #1e293b，Ribbon 与 VS Code 浅色主题一致。适合打印导向的正式文档。</p>
+      <div class="swatches"><span class="sw" style="background:#ffffff"></span><span class="sw" style="background:#f1f5f9"></span><span class="sw" style="background:#4f46e5"></span><span class="sw" style="background:#1e293b"></span></div>
+      <p style="margin-top:12px"><b class="tk">强调色 #4F46E5</b> · 用于选中态、链接、Ribbon 激活页签。</p>
+    </div>
+    <div class="theme-card theme-dark">
+      <h5>🌙 暗色（跟随 VS Code Dark / 暗夜模式）</h5>
+      <p>纸面 #111827、文字 #e5e7eb，代码块与 Mermaid 深色渲染。强调色切换为 #A5B4FC 保证对比度。</p>
+      <div class="swatches"><span class="sw" style="background:#111827"></span><span class="sw" style="background:#1f2937"></span><span class="sw" style="background:#a5b4fc"></span><span class="sw" style="background:#e5e7eb"></span></div>
+      <p style="margin-top:12px"><b class="tk">强调色 #A5B4FC</b> · 所有颜色均取自 VS Code 主题变量，用户自定义主题同样生效。</p>
+    </div>
+  </div>
+
+  <!-- UI-07 视觉规范 -->
+  <!-- UI-07 AI 与字体 -->
+  <h3 class="sub">UI-07 AI 助手交互（GitHub Copilot）与字体选择</h3>
+  <div class="grid2">
+    <div class="card">
+      <p class="fig-title">① 选中文字 → ✨ AI 菜单（浮动条 / 右键 / Ctrl+Shift+A）</p>
+      <div style="background:#f0f2f6;border-radius:10px;padding:126px 18px 20px;position:relative">
+        <div style="position:absolute;top:16px;left:18px;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 34px rgba(15,23,42,.2);padding:12px 14px;width:min(420px,92%)">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+            <span style="background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;border-radius:99px;padding:3px 12px;font-size:12px;font-weight:600">✨ 改写</span>
+            <span style="background:var(--accent-light);color:#4338ca;border-radius:99px;padding:3px 12px;font-size:12px">润色</span>
+            <span style="background:var(--accent-light);color:#4338ca;border-radius:99px;padding:3px 12px;font-size:12px">扩写</span>
+            <span style="background:var(--accent-light);color:#4338ca;border-radius:99px;padding:3px 12px;font-size:12px">缩写</span>
+            <span style="background:var(--accent-light);color:#4338ca;border-radius:99px;padding:3px 12px;font-size:12px">翻译</span>
+            <span style="background:var(--accent-light);color:#4338ca;border-radius:99px;padding:3px 12px;font-size:12px">修正错别字</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="in" style="flex:1" placeholder="自定义指令，如：改成更正式的书面语">
+            <span class="btn pri" style="padding:6px 14px">发送</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:8px">模型 GPT-5 · GitHub Copilot（VS Code 登录态）· 历史指令 ▾</div>
+        </div>
+        <p style="background:#fff;padding:14px 18px;border-radius:8px;box-shadow:0 2px 10px rgba(15,23,42,.1);font-size:14.5px;color:#1e293b">实验结论：新排版引擎使<span class="sel-txt">首屏渲染时间缩短了 42%</span>，且内存占用持平。</p>
+      </div>
+      <p class="fig-note">动作芯片单击即执行；自定义指令回车发送；结果一律进入右图差异预览卡，绝不直接改写原文。</p>
+    </div>
+    <div class="card" style="display:grid;place-items:center">
+      <div style="width:100%">
+        <p class="fig-title">② AI 结果差异预览（确认后才落盘）</p>
+        <div class="dlg" style="width:100%">
+          <div class="dlg-h"><span>✨ AI 润色 · <span style="color:#7c3aed">GPT-5</span></span><span style="font-size:11.5px;color:#94a3b8;font-weight:400">✓ 已生成 · 2.3s · 28 → 31 字</span></div>
+          <div class="dlg-b">
+            <div style="font-size:11.5px;color:#94a3b8;margin-bottom:8px">指令：润色 · 选中 1 句（位于「实验结论」段）</div>
+            <div style="border-radius:8px;overflow:hidden;font-size:13px;line-height:1.8">
+              <div style="background:#fef2f2;color:#991b1b;padding:8px 12px;text-decoration:line-through">实验结论：新排版引擎使首屏渲染时间缩短了 42%，且内存占用持平。</div>
+              <div style="background:#f0fdf4;color:#166534;padding:8px 12px">实测表明，新排版引擎将首屏渲染耗时压缩 42%，内存占用保持不变。</div>
+            </div>
+            <div style="font-size:11.5px;color:#94a3b8;margin-top:8px">✓ 生成内容已自动 Markdown 归一化（无 HTML 残留）· 流式输出中可随时停止</div>
+          </div>
+          <div class="dlg-f" style="gap:8px">
+            <button class="btn">✕ 放弃</button><button class="btn">🔄 重试</button><button class="btn">✏️ 追加指令…</button><button class="btn pri">✅ 接受替换</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:18px">
+    <div class="card" style="display:grid;place-items:center">
+      <div style="width:100%">
+        <p class="fig-title">③ 「/ AI 生成本节大纲 / 模板创作」结果卡（可选择性插入）</p>
+        <div class="dlg" style="width:100%">
+          <div class="dlg-h">✨ AI 生成本节大纲 <span class="x">✕</span></div>
+          <div class="dlg-b" style="font-size:13.5px">
+            <div style="font-size:11.5px;color:#94a3b8;margin-bottom:10px">上下文：「## 里程碑计划」+ 全文大纲（本节含正文 2,300 字）</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label style="display:flex;gap:9px;align-items:baseline"><input type="checkbox" checked><span><b>### 排期总览</b> · 一段导语 + 概览表</span></label>
+              <label style="display:flex;gap:9px;align-items:baseline"><input type="checkbox" checked><span><b>### 阶段一：功能冻结</b> · 退出标准 / 负责人 / 时间</span></label>
+              <label style="display:flex;gap:9px;align-items:baseline"><input type="checkbox" checked><span><b>### 阶段二：灰度发布</b> · 灰度策略 / 观测指标</span></label>
+              <label style="display:flex;gap:9px;align-items:baseline"><input type="checkbox"><span><b>### 阶段三：正式发布</b> · 发布 checklist</span></label>
+              <label style="display:flex;gap:9px;align-items:baseline"><input type="checkbox"><span><b>### 回滚预案</b> · 触发条件 / 步骤</span></label>
+            </div>
+          </div>
+          <div class="dlg-f"><button class="btn">放弃</button><button class="btn">🔄 换一版</button><button class="btn pri">插入所选 3 项</button></div>
+        </div>
+        <p class="fig-note">「AI 模板创作」同款交互：选定模板后按 H2/H3 骨架插入，并由 AI 填充各节导语初稿。</p>
+      </div>
+    </div>
+    <div class="card" style="display:grid;place-items:center">
+      <div style="width:100%">
+        <p class="fig-title">④ 字体选择器（西文 / 中文分设，Word 同款）</p>
+        <div style="width:300px;max-width:100%;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 36px rgba(15,23,42,.18);overflow:hidden;font-size:13px">
+          <div style="display:flex;gap:4px;margin:8px 8px 0;padding:0 4px;border-bottom:1px solid var(--line)"><span class="dlg-tab on">西文字体</span><span class="dlg-tab">中文字体</span></div>
+          <div style="padding:8px 14px 4px"><input class="in" placeholder="🔍 搜索字体" style="padding:5px 10px"></div>
+          <div class="mi" style="font-family:'Segoe UI',sans-serif;font-weight:600"><span style="float:right;color:#94a3b8;font-size:11px">默认</span>✓ Segoe UI · Aa 0123</div>
+          <div class="mi" style="font-family:Arial,sans-serif">Arial · Aa 0123</div>
+          <div class="mi" style="font-family:Georgia,serif">Georgia · Aa 0123</div>
+          <div class="mi" style="font-family:'Times New Roman',serif">Times New Roman · Aa</div>
+          <div class="mi" style="font-family:'Cascadia Code',monospace">Cascadia Code · Aa</div>
+          <div style="border-top:1px solid var(--line);padding:8px 14px;font-size:11.5px;color:#64748b">「中文字体」页：微软雅黑（默认）/ 宋体 / 楷体 / 黑体 / 思源黑体…</div>
+          <div style="border-top:1px solid var(--line);padding:9px 14px;display:flex;gap:8px;align-items:center;font-size:12px;color:#475569;flex-wrap:wrap">字号 <select class="in" style="width:60px;padding:3px 6px"><option>15px</option><option>16px</option><option>14px</option></select> 应用于 <select class="in" style="width:84px;padding:3px 6px"><option>选区</option><option>全文默认</option></select></div>
+        </div>
+        <p class="fig-note">中英文自动各用所选字体（组合回退链 <code>'Segoe UI','Microsoft YaHei'</code>，英文数字与 CJK 互不干扰）。<b>代码块字体独立</b>：恒为等宽（默认 Consolas，设置 <code>editor.codeFontFamily</code>），不受此处影响；导出 PDF 内嵌字体子集。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI-08 Draw.io -->
+  <h3 class="sub">UI-08 Draw.io 流程图：查看态与就地编辑态</h3>
+  <div class="grid2">
+    <div class="card">
+      <p class="fig-title">① 查看态（默认）：渲染为普通图片，双击进入编辑</p>
+      <div style="background:#fff;border:1px dashed #cbd5e1;border-radius:10px;padding:14px;position:relative">
+        <span style="position:absolute;top:-11px;right:10px;background:var(--accent);color:#fff;font-size:11px;border-radius:99px;padding:2px 10px">✏️ 双击编辑 Draw.io</span>
+        <svg width="100%" height="150" viewBox="0 0 460 150" font-size="12">
+          <defs><marker id="drarr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#94a3b8"/></marker></defs>
+          <rect x="8" y="55" width="70" height="34" rx="17" fill="#eef2ff" stroke="#4f46e5"/>
+          <text x="43" y="76" text-anchor="middle" fill="#3730a3">开始</text>
+          <path d="M78 72 L106 72" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#drarr)"/>
+          <rect x="110" y="50" width="88" height="44" fill="#ffffff" stroke="#94a3b8"/>
+          <text x="154" y="76" text-anchor="middle" fill="#334155">需求评审</text>
+          <path d="M198 72 L212 72" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#drarr)"/>
+          <polygon points="276,44 336,72 276,100 216,72" fill="#fffbeb" stroke="#d97706"/>
+          <text x="276" y="76" text-anchor="middle" fill="#92400e">通过?</text>
+          <path d="M336 72 H368" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#drarr)"/>
+          <text x="348" y="64" fill="#64748b" font-size="11">是</text>
+          <rect x="372" y="54" width="78" height="36" rx="18" fill="#f0fdf4" stroke="#059669"/>
+          <text x="411" y="76" text-anchor="middle" fill="#065f46">发布</text>
+          <path d="M276 100 V126 H154 V98" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#drarr)"/>
+          <text x="290" y="118" fill="#64748b" font-size="11">否 · 修改</text>
+        </svg>
+      </div>
+      <p class="fig-note">Markdown 源码就是一行标准图片语法：<code>![发布流程](diagrams/flow.drawio.svg)</code> —— GitHub / VS Code 预览原生渲染为图；drawio XML 内嵌在 SVG 元数据中，装了 vscode-drawio 插件的环境还能直接打开源文件再编辑；未装本插件时也只是普通图片，<b>永不破坏文档</b>。</p>
+    </div>
+    <div class="card">
+      <p class="fig-title">② 编辑态：图块原位变为嵌入的 Draw.io 画布</p>
+      <div style="border:1.5px solid var(--accent);border-radius:10px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:2px;background:#f8fafc;border-bottom:1px solid var(--line);padding:5px 8px;font-size:13px">
+          <span class="tt-b" title="撤销">↶</span><span class="tt-b" title="重做">↷</span><span class="tt-b" title="删除">🗑</span><span class="tt-b" title="绘制图形">▭</span><span class="tt-b" title="连接线">⟍</span><span class="tt-b" title="文字">📝</span>
+          <span class="fsep"></span><span class="tt-b" title="放大">＋</span><span class="tt-b" title="缩小">－</span>
+          <span style="flex:1"></span>
+          <span style="font-size:11px;color:#94a3b8">diagrams/flow.drawio.svg · 自动保存 ✓</span>
+          <span class="btn pri" style="padding:4px 12px;font-size:12px">✅ 完成并返回文档</span>
+        </div>
+        <div style="display:flex">
+          <div style="width:88px;background:#f8fafc;border-right:1px solid var(--line);padding:8px 6px;font-size:15px;color:#475569;display:grid;gap:7px;place-items:center" title="Draw.io 形状库（可搜索）"><span>▭</span><span>▢</span><span>◇</span><span>○</span><span>⬡</span><span>⬭</span><span>☁</span><span>🗄</span></div>
+          <div style="flex:1;background:#fff;padding:10px">
+            <svg width="100%" height="128" viewBox="0 0 460 140" font-size="12">
+              <defs><marker id="drarr2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#94a3b8"/></marker></defs>
+              <rect x="8" y="50" width="70" height="34" rx="17" fill="#eef2ff" stroke="#4f46e5"/>
+              <text x="43" y="71" text-anchor="middle" fill="#3730a3">开始</text>
+              <path d="M78 67 L106 67" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#drarr2)"/>
+              <rect x="110" y="45" width="88" height="44" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"/>
+              <rect x="106" y="41" width="7" height="7" fill="#fff" stroke="#4f46e5" stroke-width="1.5"/><rect x="195" y="41" width="7" height="7" fill="#fff" stroke="#4f46e5" stroke-width="1.5"/><rect x="106" y="86" width="7" height="7" fill="#fff" stroke="#4f46e5" stroke-width="1.5"/><rect x="195" y="86" width="7" height="7" fill="#fff" stroke="#4f46e5" stroke-width="1.5"/>
+              <text x="154" y="71" text-anchor="middle" fill="#334155">需求评审</text>
+              <path d="M198 67 L212 67" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#drarr2)"/>
+              <polygon points="276,39 336,67 276,95 216,67" fill="#fffbeb" stroke="#d97706"/>
+              <text x="276" y="71" text-anchor="middle" fill="#92400e">通过?</text>
+              <path d="M336 67 H368" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#drarr2)"/>
+              <rect x="372" y="49" width="78" height="36" rx="18" fill="#f0fdf4" stroke="#059669"/>
+              <text x="411" y="71" text-anchor="middle" fill="#065f46">发布</text>
+            </svg>
+            <div style="font-size:11px;color:#94a3b8">节点选中态（高亮 + 四角手柄）· 拖拽移动 / 拉线连接 / 双击改文字 · <kbd>Esc</kbd> 或右上按钮退出编辑</div>
+          </div>
+        </div>
+      </div>
+      <p class="fig-note">嵌入的 Draw.io 编辑器（embed 模式）提供完整图形库与模板；保存即回写 <code>.drawio.svg</code> 源文件，文档中即时刷新；编辑期间文档其余部分锁定为只读背景，防止误改。</p>
+    </div>
+  </div>
+
+  <!-- UI-09 页面设置与外观 -->
+  <h3 class="sub">UI-09 页面设置与外观（Word 式 Page Setup · F16）</h3>
+  <div class="grid2">
+    <div class="card">
+      <p class="fig-title">① 「视图 → 页面设置」下拉快选面板</p>
+      <div style="width:300px;background:var(--card,#fff);border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 36px rgba(15,23,42,.18);padding:12px;font-size:12.5px">
+        <div style="font-size:10.5px;color:#94a3b8;font-weight:700;letter-spacing:.06em;margin-bottom:6px">纸张尺寸（内容自动重排）</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">
+          <span style="background:#eef2ff;color:#3730a3;border:1.5px solid #4f46e5;border-radius:6px;padding:3px 10px">适应屏幕 ✓</span>
+          <span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px">A4</span>
+          <span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px">A3</span>
+          <span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px">A5</span>
+          <span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px">B5</span>
+          <span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px">Letter</span>
+          <span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px">自定义…</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#64748b;font-size:11.5px">
+          <span style="flex:1;height:10px;background:#eef2f7;border:1px solid #e2e8f0;border-radius:2px;position:relative;overflow:hidden"><i style="position:absolute;left:50%;top:0;bottom:0;width:38%;background:#fff;border:1px solid #cbd5e1;transform:translateX(-50%)"></i></span>
+          当前：A4 · 794px（切换后内容流式重排）
+        </div>
+        <div style="font-size:10.5px;color:#94a3b8;font-weight:700;letter-spacing:.06em;margin-bottom:6px">页面背景色</div>
+        <div style="display:flex;gap:7px;align-items:center;margin-bottom:12px">
+          <span title="跟随主题" style="width:22px;height:22px;border-radius:6px;border:2px solid #4f46e5;background:linear-gradient(135deg,#fff 50%,#1e293b 50%)"></span>
+          <span title="纯白" style="width:22px;height:22px;border-radius:6px;border:1px solid #cbd5e1;background:#fff"></span>
+          <span title="护眼绿 #C7EDCC" style="width:22px;height:22px;border-radius:6px;border:1px solid #cbd5e1;background:#C7EDCC"></span>
+          <span title="羊皮纸 #F5EFDC" style="width:22px;height:22px;border-radius:6px;border:1px solid #cbd5e1;background:#F5EFDC"></span>
+          <span title="冰蓝 #E8F4F8" style="width:22px;height:22px;border-radius:6px;border:1px solid #cbd5e1;background:#E8F4F8"></span>
+          <span title="自定义取色" style="width:22px;height:22px;border-radius:6px;border:1px dashed #94a3b8;display:grid;place-items:center;color:#94a3b8;font-size:13px">＋</span>
+        </div>
+        <div style="font-size:10.5px;color:#94a3b8;font-weight:700;letter-spacing:.06em;margin-bottom:6px">条纹</div>
+        <div style="display:flex;gap:6px">
+          <span title="无" style="flex:1;height:34px;border-radius:6px;border:1.5px solid #4f46e5;background:#fff"></span>
+          <span title="横线（信纸）" style="flex:1;height:34px;border-radius:6px;border:1px solid #cbd5e1;background:repeating-linear-gradient(#fff 0 7px,#b9c6d8 7px 8px)"></span>
+          <span title="方格" style="flex:1;height:34px;border-radius:6px;border:1px solid #cbd5e1;background:repeating-linear-gradient(#fff 0 15px,#b9c6d8 15px 16px),repeating-linear-gradient(90deg,#fff 0 15px,#b9c6d8 15px 16px)"></span>
+          <span title="点阵" style="flex:1;height:34px;border-radius:6px;border:1px solid #cbd5e1;background:radial-gradient(#b9c6d8 1px,#fff 1px) 0 0/12px 12px"></span>
+        </div>
+        <div style="border-top:1px solid #e2e8f0;margin-top:11px;padding-top:8px;font-size:11px;color:#94a3b8">仅影响显示 · 不写入 Markdown 源码 · 工作区级持久化</div>
+      </div>
+      <p class="fig-note">Ribbon「视图 → 页面设置 ▾」弹出；也可从状态栏纸张指示（如「A4」）直达。切换即时生效，无确认弹窗。</p>
+    </div>
+    <div class="card">
+      <p class="fig-title">② 外观组合效果与重排示意</p>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1;border-radius:8px;border:1px solid #cbd5e1;box-shadow:0 2px 10px rgba(15,23,42,.12);padding:14px;background:#C7EDCC;background-image:repeating-linear-gradient(transparent 0 25px,rgba(84,120,96,.25) 25px 26px);color:#2d4a3a;font-size:11px;line-height:26px">
+          <b style="font-size:13px">护眼绿 + 横线（信纸）</b><br>条纹间距 = 行高整数倍，文字恰在两条线之间，不压线。
+        </div>
+        <div style="flex:1;border-radius:8px;border:1px solid #cbd5e1;box-shadow:0 2px 10px rgba(15,23,42,.12);padding:14px;background:#F5EFDC;color:#5b4a2f;font-size:11px;line-height:1.9">
+          <b style="font-size:13px">羊皮纸 + 无条纹</b><br>适合长文阅读与打印预览。
+        </div>
+      </div>
+      <p class="fig-title" style="margin-top:14px">内容跟随重排（宽度切换）</p>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="flex:1.4;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:10px;font-size:11px;color:#334155">适应屏幕 / A4（794px）：<br>「本季度重点推进可视化表格与图片持久化两项核心能力」一行放下。</div>
+        <div style="flex:1;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:10px;font-size:11px;color:#334155">A5（559px）：<br>「本季度重点推进可视化表格与图片持久化两项核心能力」自动换行为两行，表格列收缩。</div>
+      </div>
+      <p class="fig-note">重排为纯 CSS 流式行为：段落换行、表格 <code>max-width:100%</code> 收缩、图片等比缩放、代码块横向滚动不折行；切换即时无闪烁。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">UI-10 视觉规范摘要</h3>
+  <div class="card">
+    <table class="tbl">
+      <tr><th>维度</th><th>规范</th></tr>
+      <tr><td>字体（中英分设）</td><td>正文 = 西文字体 + 中文字体组合回退链（默认 Segoe UI + 微软雅黑），英文数字与 CJK 自动各用其字体；<b>代码块 / 行内代码恒为独立等宽字体</b>（默认 Consolas，不继承正文）；界面 UI 字体 13px（Ribbon 标签）/ 11px（组标签）</td></tr>
+      <tr><td>Ribbon 高度（用户强调）</td><td>恒定两行 ≤ 76px：页签行 ~34px + 图标工具行 ~42px（含底部 10px 组标签）；低频功能收进 ▾ 下拉；窄屏工具行横向滚动，绝不折到第三行</td></tr>
+      <tr><td>字号（编辑区）</td><td>默认 15px（可 75%–200% 缩放）；H1 1.8em → H6 1.05em 阶梯；行高 1.75</td></tr>
+      <tr><td>纸张</td><td>默认宽 760px 居中，左右留白自适应；可切换 100% 通栏</td></tr>
+      <tr><td>页面外观（v1.7 · F16）</td><td>纸张宽度三态：适应屏幕（默认）/ 纸张预设（A4=794px @96dpi 等，见 F16 表）/ 自定义 400–1600px；背景色与条纹仅作用于纸张区域，条纹颜色取背景色 8% 对比度；暗色主题提供深色变体预设</td></tr>
+      <tr><td>圆角 / 阴影</td><td>卡片 8–14px；弹层阴影 <code>0 16px 40px rgba(15,23,42,.2)</code>；纸张 <code>0 2px 14px rgba(15,23,42,.14)</code></td></tr>
+      <tr><td>图标（用户强调）</td><td>工具栏按钮<b>一律图标化</b>（20px 线性，stroke 1.6），悬停 tooltip 显示中/英文名 + 快捷键；仅语义模糊的下拉与开关保留极短文字（如「Aa 西文 ▾」）；页签保留文字；组底部微标签辅助识别；斜杠菜单 30px 圆角底图标</td></tr>
+      <tr><td>动效</td><td>弹层 120–180ms 淡入上浮 4px；菜单键盘移动高亮 60ms；不使用大位移动画</td></tr>
+      <tr><td>强调色</td><td>亮色 #4F46E5 / 暗色 #A5B4FC，取自主题变量；危险操作 #DC2626</td></tr>
+      <tr><td>AI 标识</td><td>✨ 图标 + 紫色渐变（#6366F1 → #A855F7），用于 AI 入口按钮、斜杠菜单 AI 组与结果卡头；与普通操作形成一眼可辨的区分</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 5 快捷键 ================= -->
+<section id="s5">
+  <h2 class="sec"><span class="sec-no">5</span>快捷键体系</h2>
+  <p class="sec-lead">默认绑定避开 VS Code 内置冲突（如 Ctrl+Shift+T 保留给「重新打开编辑器」）；全部可在键盘映射中自定义。</p>
+  <div class="grid2">
+    <div class="card">
+      <h3 class="sub" style="margin-top:0">行内与结构</h3>
+      <table class="tbl">
+        <tr><th>操作</th><th>快捷键</th></tr>
+        <tr><td>加粗 / 斜体</td><td><kbd>Ctrl+B</kbd> / <kbd>Ctrl+I</kbd></td></tr>
+        <tr><td>删除线</td><td><kbd>Ctrl+Shift+S</kbd></td></tr>
+        <tr><td>行内代码</td><td><kbd>Ctrl+\`</kbd></td></tr>
+        <tr><td>插入链接</td><td><kbd>Ctrl+K</kbd></td></tr>
+        <tr><td>标题 1–6</td><td><kbd>Ctrl+1</kbd> … <kbd>Ctrl+6</kbd></td></tr>
+        <tr><td>标题升 / 降级</td><td><kbd>Ctrl+=</kbd> / <kbd>Ctrl+-</kbd></td></tr>
+        <tr><td>无序 / 有序 / 任务列表</td><td><kbd>Ctrl+Shift+8</kbd> / <kbd>Ctrl+Shift+7</kbd> / <kbd>Ctrl+Shift+9</kbd></td></tr>
+        <tr><td>引用块</td><td><kbd>Ctrl+Shift+Q</kbd></td></tr>
+        <tr><td>代码块</td><td><kbd>Ctrl+Shift+K</kbd></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 class="sub" style="margin-top:0">插入与模式</h3>
+      <table class="tbl">
+        <tr><th>操作</th><th>快捷键</th></tr>
+        <tr><td>插入表格</td><td><kbd>Ctrl+Alt+T</kbd></td></tr>
+        <tr><td>插入图片</td><td><kbd>Ctrl+Shift+I</kbd></td></tr>
+        <tr><td>斜杠菜单</td><td><kbd>/</kbd>（任意位置，Confluence 式）</td></tr>
+        <tr><td>选区 AI 菜单</td><td><kbd>Ctrl+Shift+A</kbd></td></tr>
+        <tr><td>切换编辑模式</td><td><kbd>Ctrl+Alt+V</kbd>（循环切换）</td></tr>
+        <tr><td>查找 / 替换</td><td><kbd>Ctrl+F</kbd> / <kbd>Ctrl+H</kbd></td></tr>
+        <tr><td>格式化文档</td><td><kbd>Shift+Alt+F</kbd>（VS Code 原生）</td></tr>
+        <tr><td>表格内导航</td><td><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd>（末格 Tab 续行）</td></tr>
+        <tr><td>列表缩进</td><td><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td></tr>
+        <tr><td>打开链接</td><td><kbd>Ctrl+Click</kbd></td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">Markdown 速记输入（无需按钮）</h3>
+    <table class="tbl">
+      <tr><th>输入</th><th>自动转换为</th><th>输入</th><th>自动转换为</th></tr>
+      <tr><td><code># ␣</code> … <code>###### ␣</code></td><td>标题 1–6</td><td><code>&gt; ␣</code></td><td>引用块</td></tr>
+      <tr><td><code>- ␣</code> / <code>* ␣</code></td><td>无序列表</td><td><code>1. ␣</code></td><td>有序列表</td></tr>
+      <tr><td><code>[] ␣</code> / <code>[ ] ␣</code></td><td>任务列表</td><td><code>``` + 语言</code></td><td>代码块</td></tr>
+      <tr><td><code>--- ⏎</code></td><td>分割线</td><td><code>|a|b| ⏎</code></td><td>智能扩为表格（P1）</td></tr>
+      <tr><td><code>$$ ⏎</code></td><td>块级公式（P1）</td><td><code>/</code></td><td>斜杠命令菜单</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 6 设置与命令 ================= -->
+<section id="s6">
+  <h2 class="sec"><span class="sec-no">6</span>设置项与命令面板</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3 class="sub" style="margin-top:0">设置项（settings.json，前缀 markdownWord.*）</h3>
+      <table class="tbl">
+        <tr><th>设置</th><th>默认值</th><th>说明</th></tr>
+        <tr><td><code>defaultMode</code></td><td><code>wysiwyg</code></td><td>打开文档的初始模式：wysiwyg / source / split</td></tr>
+        <tr><td><code>openAsDefault</code></td><td><code>true</code></td><td>是否接管 .md 默认打开方式</td></tr>
+        <tr><td><code>image.pasteAction</code></td><td><code>saveToFolder</code></td><td>粘贴图片：saveToFolder / sameFolder / base64 / ask</td></tr>
+        <tr><td><code>image.folder</code></td><td><code>./images</code></td><td>图片保存目录（相对文档）</td></tr>
+        <tr><td><code>image.fileNamePattern</code></td><td><code>${docName}-${timestamp}</code></td><td>图片命名模板</td></tr>
+        <tr><td><code>editor.fontFamilyLatin</code></td><td><code>Segoe UI</code></td><td>正文西文字体（拉丁字符与数字，与中文字体组合回退链）</td></tr>
+        <tr><td><code>editor.fontFamilyCJK</code></td><td><code>Microsoft YaHei</code></td><td>正文中文字体（CJK 字符）</td></tr>
+        <tr><td><code>editor.fontSize</code></td><td><code>15</code></td><td>正文字号（px，75%–200% 缩放）</td></tr>
+        <tr><td><code>page.size</code></td><td><code>fit</code></td><td>页面尺寸：fit（适应屏幕，默认）/ a3 / a4 / a5 / b5 / letter / legal / custom（配合 page.customWidth）</td></tr>
+        <tr><td><code>page.customWidth</code></td><td><code>794</code></td><td>自定义纸张宽度（px，400–1600，仅 page.size=custom 时生效）</td></tr>
+        <tr><td><code>page.background</code></td><td><code>auto</code></td><td>页面背景色：auto（跟随主题）/ white / green（护眼 #C7EDCC）/ parchment / iceblue / 自定义十六进制色</td></tr>
+        <tr><td><code>page.pattern</code></td><td><code>none</code></td><td>页面条纹：none / lines（横线信纸）/ grid（方格）/ dots（点阵）；间距对齐行高</td></tr>
+        <tr><td><code>editor.codeFontFamily</code></td><td><code>Consolas</code></td><td>代码块 / 行内代码等宽字体（带回退链，不继承正文字体）</td></tr>
+        <tr><td><code>ui.language</code></td><td><code>auto</code></td><td>界面语言：auto（跟随 VS Code 显示语言）/ zh-CN / en，切换即时生效</td></tr>
+        <tr><td><code>diagrams.folder</code></td><td><code>./diagrams</code></td><td>Draw.io 源文件（.drawio.svg）保存目录，持久化并随文档搬移</td></tr>
+        <tr><td><code>editor.pageWidth</code></td><td><code>760</code></td><td>纸张宽度 px；0 = 通栏</td></tr>
+        <tr><td><code>slashMenu.enabled</code></td><td><code>true</code></td><td>斜杠菜单开关</td></tr>
+        <tr><td><code>table.defaultHeader</code></td><td><code>true</code></td><td>新建表格默认含表头</td></tr>
+        <tr><td><code>paste.smartFromWord</code></td><td><code>true</code></td><td>Word/Excel/网页智能粘贴（P1）</td></tr>
+        <tr><td><code>export.pdfPageSize</code></td><td><code>A4</code></td><td>导出 PDF 页面尺寸</td></tr>
+        <tr><td><code>export.pdfEmbedFonts</code></td><td><code>true</code></td><td>PDF 内嵌字体子集（含自选字体，保证跨机一致）</td></tr>
+        <tr><td><code>ai.enabled</code></td><td><code>true</code></td><td>AI 助手开关（需 VS Code 已登录 Copilot；关闭即隐藏全部 AI 入口）</td></tr>
+        <tr><td><code>ai.model</code></td><td>跟随 Copilot 默认</td><td>AI 模型选择（GPT / Claude 等，以当前订阅可用为准）</td></tr>
+        <tr><td><code>ai.customPrompts</code></td><td><code>[]</code></td><td>选区 AI 自定义指令库（P2 提供管理界面）</td></tr>
+        <tr><td><code>editor.defaultFontFamily</code></td><td>跟随 VS Code</td><td>文档默认字体（字体选择器初始值）</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 class="sub" style="margin-top:0">命令面板（Ctrl+Shift+P）</h3>
+      <table class="tbl">
+        <tr><th>命令</th><th>说明</th></tr>
+        <tr><td>Markdown Word: 切换编辑模式</td><td>三模式循环切换</td></tr>
+        <tr><td>…: 插入表格</td><td>打开网格选择器</td></tr>
+        <tr><td>…: 插入图片</td><td>打开图片对话框</td></tr>
+        <tr><td>…: 插入链接 / 代码块 / 公式</td><td>对应插入操作</td></tr>
+        <tr><td>…: 生成目录 (TOC)</td><td>按标题生成目录</td></tr>
+        <tr><td>…: 插入当前日期时间</td><td>格式可配置</td></tr>
+        <tr><td>…: 导出为 HTML / PDF</td><td>PDF 含字体内嵌、图片打包、书签、页码（P1）</td></tr>
+        <tr><td>…: AI 润色选区 / AI 改写选区</td><td>等价于选区 AI 菜单（P1）</td></tr>
+        <tr><td>…: AI 生成本节大纲</td><td>斜杠菜单同款能力（P1）</td></tr>
+        <tr><td>…: AI 模板创作…</td><td>选择模板并由 AI 生成初稿（P1）</td></tr>
+        <tr><td>…: 校验文档图片完整性</td><td>扫描丢失图片并逐个重新定位（P1）</td></tr>
+        <tr><td>…: 插入 Draw.io 流程图</td><td>图块原位进入嵌入编辑器（P1，见 UI-08）</td></tr>
+        <tr><td>…: 页面设置…</td><td>打开完整页面设置对话框（纸张 / 背景 / 条纹，P1 · v1.7）</td></tr>
+        <tr><td>…: 用源码编辑器打开</td><td>临时切回 VS Code 原生编辑器</td></tr>
+        <tr><td>…: 重置文档格式</td><td>按规范重排表格对齐、列表标记</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 7 非功能 ================= -->
+<section id="s7">
+  <h2 class="sec"><span class="sec-no">7</span>非功能需求</h2>
+  <div class="card">
+    <table class="tbl">
+      <tr><th style="width:120px">维度</th><th>要求</th></tr>
+      <tr><td><b>流畅度（用户强调 · v1.5 第一优先）</b></td><td>键入到上屏：100KB 文档 &lt; 16ms（一帧内）、1MB 文档 &lt; 30ms；滚动 60fps 不掉帧（视口外内容虚拟化）；Ribbon / 斜杠菜单 / 右键菜单打开 &lt; 100ms；打开文档首屏：500 字 &lt; 300ms、100KB &lt; 500ms、1MB &lt; 1s（同时提示源码模式）；自动保存写盘 &lt; 100ms、防抖 500ms 且绝不阻塞输入；大表（100 行 × 20 列）行列操作响应 &lt; 50ms；AI 流式输出与 Draw.io 编辑期间，主编辑区输入不受影响</td></tr>
+      <tr><td><b>内存预算（用户强调 · v1.5 第二优先）</b></td><td>空文档 webview 进程 &lt; 150MB；典型文档（100KB 文本 + 20 张图片）&lt; 300MB；视口外图片不解码 / 降采样解码；KaTeX / Mermaid / 代码高亮结果 LRU 缓存（≤ 50 块，超限淘汰最旧）；Draw.io 编辑器仅进入编辑时加载、退出即卸载 iframe；撤销栈 ≤ 500 步；关闭标签页即销毁 webview 并清理全部监听器 / 定时器；<b>连续编辑 8 小时内存无持续增长（泄漏验收）</b></td></tr>
+      <tr><td><b>性能工程手段</b></td><td>虚拟滚动（只渲染视口 ± 2 屏的块）；ProseMirror 增量 DOM 更新（不整树重绘）；图片 IntersectionObserver 懒解码；Shiki 语言包 / Mermaid / KaTeX / Draw.io 全部动态 import 按需加载；导出走文档快照克隆、不干扰编辑区；CI 内置关键路径计时测试与 DevTools 内存快照对比</td></tr>
+      <tr><td><b>数据安全</b></td><td>写盘前保留上版内容于内存以便回滚；崩溃后重开恢复未保存草稿（本地缓存，可关闭）；任何操作不产生非 Markdown 副产物</td></tr>
+      <tr><td><b>语法保真</b></td><td>打开→保存往返（round-trip）语义保留率 ≥ 99%；不认识的语法（注释、罕见扩展）按原文段落透传，绝不静默丢弃</td></tr>
+      <tr><td><b>兼容性</b></td><td>VS Code ≥ 1.85 桌面版三平台；Remote SSH / Web 版 P2 支持；兼容 GitHub Flavored Markdown 为主集</td></tr>
+      <tr><td><b>无障碍</b></td><td>全部功能键盘可达；Ribbon 支持 F6 分区导航；屏幕阅读器播报格式变化（基础支持）</td></tr>
+      <tr><td><b>本地化（用户强调）</b></td><td>界面中英双语完整覆盖（vscode.l10n），跟随 VS Code 显示语言，<code>ui.language</code> 可强制切换且即时生效；斜杠菜单 / Emoji 搜索中英关键词等权匹配；文档日期格式跟随系统区域</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 8 技术方案 ================= -->
+<section id="s8">
+  <h2 class="sec"><span class="sec-no">8</span>技术方案概要</h2>
+  <p class="sec-lead">基于现有原型（v0.0.1，Custom Editor + contenteditable）演进，核心风险是「富文本 ↔ Markdown 双向保真」，方案上以成熟编辑器内核收敛自研面。</p>
+  <div class="card">
+    <div class="arch">
+      <div class="layer l1"><b>VS Code 扩展宿主</b><span class="tagchip">CustomTextEditorProvider</span><span class="tagchip">文件读写 / 图片落盘 (workspace.fs)</span><span class="tagchip">命令 / 设置 / 大纲</span><span class="tagchip">Copilot LM API (vscode.lm)</span><span class="tagchip">TypeScript</span></div>
+      <div class="layer l2"><b>Webview 编辑器内核</b><span class="tagchip">ProseMirror（Markdown Schema）</span><span class="tagchip">React 组件壳</span><span class="tagchip">Ribbon / 斜杠菜单 / 对话框</span></div>
+      <div class="layer l3"><b>解析与渲染</b><span class="tagchip">markdown-it（GFM）</span><span class="tagchip">Shiki 代码高亮</span><span class="tagchip">KaTeX</span><span class="tagchip">Mermaid</span></div>
+      <div class="layer l4"><b>数据同步</b><span class="tagchip">文档 ↔ Webview 双向 patch</span><span class="tagchip">语义级撤销栈</span><span class="tagchip">外部修改冲突检测</span></div>
+    </div>
+    <ul class="dots" style="margin-top:14px">
+      <li><b>为何选 ProseMirror</b> — 文档模型天然贴近块/行内结构，markdown 序列化方案成熟（参考 milkdown / tiptap），可将自研范围压缩到「表格交互、图片落盘、Ribbon」等增值层。</li>
+      <li><b>图片落盘</b> — Webview 无磁盘权限，剪贴板图片经 postMessage 传扩展宿主，由 <code>workspace.fs</code> 写入，回传相对路径插入文档。</li>
+      <li><b>AI 通道</b> — 经 VS Code Language Model API（<code>vscode.lm.selectChatModels</code>）调用已登录的 GitHub Copilot 模型，复用其认证与配额，插件零密钥零登录；Webview 的 AI 界面通过 postMessage 请求宿主转发，token 流式回传渲染；未登录或企业策略禁用时返回不可用状态，UI 整体优雅降级。</li>
+      <li><b>PDF 导出</b> — 宿主侧经打印管线渲染 Webview 快照，内嵌字体子集、打包相对路径图片后输出 PDF，并按标题树生成书签。</li>
+      <li><b>Draw.io 嵌入（可行性已验证路线）</b> — 打包 Draw.io embed 静态资源（Apache-2.0，与 MIT 兼容）随插件分发，Webview 内以 iframe + postMessage（load / save / exit 协议）驱动就地编辑；保存为 <code>.drawio.svg</code>（XML 内嵌 SVG），以标准图片语法引用——GitHub 原生渲染、可被 vscode-drawio 插件二次编辑；先例：hediet.vscode-drawio 已验证同方案在 VS Code Webview 中稳定可行。查看态用轻量 viewer 渲染，编辑器按需加载以控体积。</li>
+      <li><b>性能与内存工程（用户强调 · 指标见第 7 节）</b> — 视口虚拟化 + ProseMirror 增量更新控制 DOM 规模；重型依赖（Draw.io / Mermaid / KaTeX / Shiki 语言包）一律动态 import 按需加载、退出即卸载；图片懒解码；渲染结果 LRU 缓存设上限；撤销栈封顶；关闭标签即销毁 webview；<b>每个里程碑交付时附性能冒烟报告</b>（样例文档关键路径计时 + DevTools 内存快照对比），M3 逐项过堂验收。</li>
+      <li><b>与 v0.0.1 的关系</b> — 保留 Custom Editor 注册与主题变量方案；编辑内核由裸 contenteditable 迁移至 ProseMirror（M0 做往返保真 POC 后再动工）。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================= 9 里程碑 ================= -->
+<section id="s9">
+  <h2 class="sec"><span class="sec-no">9</span>里程碑与风险</h2>
+  <div class="ms">
+    <div class="m"><div class="per">M0 · 1 周</div><h4>技术验证</h4><ul><li>ProseMirror ↔ Markdown 往返保真 POC</li><li>图片粘贴落盘链路验证</li><li>技术选型冻结</li></ul></div>
+    <div class="m"><div class="per">M1 · 4 周</div><h4>MVP（P0 全量）</h4><ul><li>三模式 + Ribbon（开始/插入/视图）</li><li>表格创建与基础编辑</li><li>图片粘贴/拖拽落盘 + 持久化策略与完整性校验</li><li>Confluence 式斜杠菜单、列表、快捷键</li></ul></div>
+    <div class="m"><div class="per">M2 · 3 周</div><h4>v1.0（P1 大部）</h4><ul><li>AI 助手上线（Copilot：选区改写润色 + 斜杠 AI 大纲/模板）</li><li>页面设置与外观（纸张尺寸重排 + 背景色/条纹）（v1.7）</li><li>图标化工具栏、界面中英文（i18n）、Emoji MRU 面板</li><li>字体选择器 + PDF 强化（内嵌字体/书签，默认采用页面尺寸）</li><li>智能粘贴、公式 / Mermaid / 脚注 / TOC / 面板</li><li>查找替换、浮动工具栏、大纲拖拽、Draw.io 嵌入 POC</li></ul></div>
+    <div class="m"><div class="per">M3 · 3 周</div><h4>v1.1 打磨发布</h4><ul><li>Draw.io 就地编辑完整落地（查看 / 编辑 / 持久化）</li><li>表格移动行列、图片缩放精修</li><li>AI 自定义指令库 / AI 图表（P2 启动）</li><li><b>性能与内存专项验收</b>（流畅度 / 内存预算指标逐项过堂）</li><li>市场页与发布</li></ul></div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <h3 class="sub" style="margin-top:0">主要风险与对策</h3>
+    <table class="tbl">
+      <tr><th>风险</th><th>等级</th><th>对策</th></tr>
+      <tr><td>富文本 ↔ Markdown 往返丢语法（注释、HTML 混排）</td><td>高</td><td>M0 先做 POC；未覆盖语法按原段落透传；提供「源码模式兜底」</td></tr>
+      <tr><td>contenteditable 交互复杂度（表格/列表嵌套）</td><td>高</td><td>不自研内核，用 ProseMirror 表格/列表插件并定制</td></tr>
+      <tr><td>与 VS Code 内置快捷键冲突</td><td>中</td><td>默认绑定避开保留键；安装后首次运行冲突检测提示</td></tr>
+      <tr><td>大文档（MB 级）性能</td><td>中</td><td>懒渲染 + 虚拟滚动；超阈值引导源码模式</td></tr>
+      <tr><td>Copilot API 配额 / 版本变化 / 企业策略限制</td><td>中</td><td>仅依赖公开 vscode.lm API；未登录或禁用时 AI 全量隐藏，不影响其余功能；AI 与核心功能彻底解耦</td></tr>
+      <tr><td>自选字体在他人机器缺失</td><td>中</td><td>font-family 持久化带回退链；导出 PDF 内嵌字体子集；打开时缺失仅提示不阻断</td></tr>
+      <tr><td>字体等 HTML 属性降低 Markdown 源码纯净度</td><td>低</td><td>默认不开字体功能；仅选区级写入；「清除格式 / 重置文档格式」可整体剥离回纯 Markdown</td></tr>
+      <tr><td>Draw.io 资源体积（约 10–20MB）与 Webview 性能</td><td>中</td><td>查看态用轻量 viewer 渲染、编辑器按需加载；未使用 Draw.io 时零开销；.drawio.svg 在无任何插件环境仍可作为普通图片显示，文档不损坏</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 10 需求跟踪总表 ================= -->
+<section id="s10">
+  <h2 class="sec"><span class="sec-no">10</span>需求跟踪总表（活表格）</h2>
+  <p class="sec-lead">一张表纵览全部需求的概要、优先级、详述位置与实现进度。<b style="color:#b91c1c">维护约定：每次新增需求，评审通过后即在此登记一行；每次完成开发 / 联调 / 发布，必须回来更新「实现情况」与日期。</b>状态定义：<span class="st st-done">已完成</span>功能可用且验收通过 · <span class="st st-part">部分完成</span>已有可用子集 · <span class="st st-todo">未开始</span>尚未动工。当前状态基于原型 v0.0.1 于 <b>2026-08-22</b> 评估。</p>
+  <div class="card">
+    <table class="tbl">
+      <tr><th style="width:62px">编号</th><th>需求概要</th><th style="width:88px">优先级</th><th style="width:96px">详述位置</th><th style="width:230px">实现情况（2026-08-22）</th></tr>
+      <tr><td colspan="5" style="background:#eff6ff;font-weight:700;color:#1e40af">P0 · MVP（第一批交付）</td></tr>
+      <tr><td>F01</td><td>三模式编辑（所见即所得 / 源码 / 分屏）、自动保存、外部修改同步、语义撤销</td><td><span class="badge b-p0">P0</span></td><td><a href="#f01">3 · F01</a></td><td><span class="st st-dev">已开发待验收</span>v1.1.4 源码模式纸张化（--page-width 与页面设置共用）+ 原生编辑器并排入口；三模式/防抖保存/外部重载（2026-08-22）</td></tr>
+      <tr><td>F02</td><td>行内格式：粗 / 斜 / 删 / 行内代码 / 高亮 / 上下标 / 清除格式 / 格式刷</td><td><span class="badge b-p0">P0</span></td><td><a href="#f02">3 · F02</a></td><td><span class="st st-dev">已开发待验收</span>粗/斜/删/下划线/高亮/行内代码已实现；上下标/格式刷为 P1（2026-08-22）</td></tr>
+      <tr><td>F03</td><td>标题 H1–H6 快速样式库、速记输入（# 空格）、升降级</td><td><span class="badge b-p0">P0</span></td><td><a href="#f03">3 · F03</a></td><td><span class="st st-dev">已开发待验收</span>H1–H3+H▾ 样式、Ctrl+1..6、# 速记；Tab 升降级待补（2026-08-22）</td></tr>
+      <tr><td>F04</td><td>无序 / 有序 / 任务列表、嵌套缩进、三种列表互转</td><td><span class="badge b-p0">P0</span></td><td><a href="#f04">3 · F04</a></td><td><span class="st st-dev">已开发待验收</span>三种列表/Tab 嵌套/空项退出/互转均实现（2026-08-22）</td></tr>
+      <tr><td>F05</td><td>可视化表格：网格创建器、行列增删、对齐、表头、Tab 导航、末格续行</td><td><span class="badge b-p0">P0</span></td><td><a href="#f05">3 · F05</a></td><td><span class="st st-dev">已开发待验收</span>v1.1.3 三轮插入修复：焦点丢失/工具条双执行/空行块间隙跳末尾/弹层夺选区（真实浏览器行为）/非空段落嵌坏，回归 6 场景 + 26 项 jsdom；移动行列 P1（2026-08-22）</td></tr>
+      <tr><td>F06</td><td>图片粘贴 / 拖拽落盘、持久化保证、打开时完整性校验、可携带性</td><td><span class="badge b-p0">P0</span></td><td><a href="#f06">3 · F06</a></td><td><span class="st st-dev">已开发待验收</span>粘贴/拖拽落盘 ./images + 相对路径 + 丢失虚线标识；「重新定位」交互待补（2026-08-22）</td></tr>
+      <tr><td>F07</td><td>链接对话框、Ctrl+K、URL 自动识别、编辑 / 移除</td><td><span class="badge b-p0">P0</span></td><td><a href="#f07">3 · F07</a></td><td><span class="st st-dev">已开发待验收</span>对话框/Ctrl+K/编辑已有链接；裸 URL 解析识别已做，粘贴自动包裹待补（2026-08-22）</td></tr>
+      <tr><td>F08</td><td>Confluence 式斜杠菜单：任意位置唤出、分组、实时过滤、二级子菜单</td><td><span class="badge b-p0">P0</span></td><td><a href="#f08">3 · F08</a></td><td><span class="st st-dev">已开发待验收</span>任意位置/分组/中英过滤/键盘导航/emoji 直插；二级子菜单与拼音 P1（2026-08-22）</td></tr>
+      <tr><td>F09</td><td>代码块：30+ 语言（含 PL/SQL）、语法高亮、行号、一键复制、独立等宽字体</td><td><span class="badge b-p0">P0</span></td><td><a href="#f09">3 · F09</a></td><td><span class="st st-part">部分完成</span>34 种语言（含 PL/SQL）/等宽字体/复制已实现；Shiki 语法着色与行号待接入（2026-08-22）</td></tr>
+      <tr><td>F14</td><td>VS Code 集成：命令面板、设置项、主题跟随、快捷键自定义</td><td><span class="badge b-p0">P0</span></td><td><a href="#f14">3 · F14</a></td><td><span class="st st-dev">已开发待验收</span>4 命令 + 5 设置项 + 主题变量跟随 + 状态栏；大纲/面包屑 P1（2026-08-22）</td></tr>
+      <tr><td>UI-01</td><td>Ribbon 恒定两行 + 全面图标化 + 双语 tooltip + 快速样式库</td><td><span class="badge b-p0">P0</span></td><td><a href="#ui-01">4 · UI-01</a></td><td><span class="st st-dev">已开发待验收</span>四页签两行图标化，tooltip 含中文名+快捷键（2026-08-22）</td></tr>
+      <tr><td>—</td><td>快捷键体系（规避 VS Code 内置冲突，全量可自定义）</td><td><span class="badge b-p0">P0</span></td><td><a href="#s5">5 · 快捷键</a></td><td><span class="st st-dev">已开发待验收</span>核心绑定 15+；Ctrl+\` 等个别需真机确认冲突（2026-08-22）</td></tr>
+      <tr><td>横切</td><td>性能专项（v1.5）：流畅度第一优先（键入 &lt;16ms / 60fps / 菜单 &lt;100ms / 首屏 &lt;300ms）+ 内存第二优先（空文档 &lt;150MB / 典型 &lt;300MB / 8h 无泄漏）</td><td><span class="badge b-p0">P0</span></td><td><a href="#s7">7 · 非功能</a> / <a href="#s8">8 · 技术</a></td><td><span class="st st-todo">未开始</span>M1 已内置防抖保存与轻量解析；量化指标验收待 M3</td></tr>
+      <tr><td colspan="5" style="background:#fffbeb;font-weight:700;color:#92400e">P1 · v1.0（第二批交付）</td></tr>
+      <tr><td>F02+</td><td>字体中英分设：西文 / 中文双下拉、字号、持久化、PDF 内嵌（v1.2）</td><td><span class="badge b-p1">P1 · v1.2</span></td><td><a href="#f02">3 · F02</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>F10</td><td>高级内容：公式 / Mermaid / 脚注 / TOC / 四色面板 / HTML 直写</td><td><span class="badge b-p1">P1</span></td><td><a href="#f10">3 · F10</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>F10+</td><td>Draw.io 流程图嵌入编辑（.drawio.svg 持久化，M2 POC / M3 落地）（v1.3）</td><td><span class="badge b-p1">P1 · v1.3</span></td><td><a href="#f10">3 · F10</a> / <a href="#ui-08">UI-08</a></td><td><span class="st st-todo">未开始</span>排期 M2 POC</td></tr>
+      <tr><td>F10+</td><td>Emoji 面板 + MRU 置顶 + 斜杠直插（双入口实时同步）（v1.3）</td><td><span class="badge b-p1">P1 · v1.3</span></td><td><a href="#f10">3 · F10</a> / <a href="#ui-03">UI-03</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>F11</td><td>智能粘贴：Word / Excel / 网页 → Markdown 自动转换</td><td><span class="badge b-p1">P1</span></td><td><a href="#f11">3 · F11</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>F12</td><td>查找替换：大小写 / 正则 / 全部替换 / 命中高亮</td><td><span class="badge b-p1">P1</span></td><td><a href="#f12">3 · F12</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>F13</td><td>导出 HTML / PDF（字体内嵌、书签、页码、仅选中部分导出）</td><td><span class="badge b-p1">P1</span></td><td><a href="#f13">3 · F13</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>F14+</td><td>界面中英文 i18n：跟随 VS Code 显示语言，即时切换（v1.3）</td><td><span class="badge b-p1">P1 · v1.3</span></td><td><a href="#f14">3 · F14</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>F15</td><td>AI 助手（Copilot）：斜杠 AI 大纲 / 模板 / 续写 + 选区改写润色 + 差异预览（v1.1）</td><td><span class="badge b-p1">P1 · v1.1</span></td><td><a href="#f15">3 · F15</a> / <a href="#ui-07">UI-07</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>F16</td><td>页面设置与外观：纸张尺寸（适应屏幕 / A3–Legal / 自定义）内容流式重排；背景色与条纹（护眼绿 / 羊皮纸 / 横线 / 方格 / 点阵）（v1.7）</td><td><span class="badge b-p1">P1 · v1.7</span></td><td><a href="#f16">3 · F16</a> / <a href="#ui-09">UI-09</a></td><td><span class="st st-dev">已开发待验收</span>v1.1.0：全部预设 + 自定义 + 暗色变体 + 快选面板/状态栏入口，工作区持久化（2026-08-22）</td></tr>
+      <tr><td>UI-04</td><td>选区浮动工具栏（含 ✨ AI 按钮）与上下文右键菜单</td><td><span class="badge b-p1">P1</span></td><td><a href="#ui-04">4 · UI-04</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td>—</td><td>大纲视图 / 面包屑 / 状态栏字数与 Copilot 指示</td><td><span class="badge b-p1">P1</span></td><td><a href="#f14">3 · F14</a></td><td><span class="st st-todo">未开始</span></td></tr>
+      <tr><td colspan="5" style="background:#f8fafc;font-weight:700;color:#475569">P2 · 远期</td></tr>
+      <tr><td>P2</td><td>图床上传（PicGo / S3）、docx 导出、打包文档 zip、AI 指令库与 AI 图表、自定义 CSS 主题、斜杠菜单自定义项、表格列宽记忆、网页版 Remote 支持</td><td><span class="badge b-p2">P2</span></td><td>各模块 P2 标注处</td><td><span class="st st-todo">未开始</span></td></tr>
+    </table>
+    <p class="fig-note" style="margin-top:12px">「详述位置」为可点击锚点。状态定义（v1.6 起）：<b>已开发待验收</b> = 代码完成且自动化测试通过，待真机人工验收。<b>2026-08-23（v1.2.0 全面排查批次）：独立代码审查 + 自查共修复 19 项缺陷（含 9 项数据丢失级：结构块上应用列表销毁内容、单元格管道符、代码块换行丢失、粘贴反序、嵌套围栏、嵌套列表输入丢失、外部修改覆盖等），测试扩至 86 项；P0 14 条中 12 条已开发待验收、1 条部分完成（F09 缺语法着色）、1 条未开始（性能量化）；P1 已启动 F16</b>。下次更新本表时请同步修改此行汇总。</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Markdown Word · 需求与 UI 设计文档 v1.8 评审稿 · 2026-08-22 · v1.8 变更：F16 页面设置与外观实施交付（v1.1.0 vsix，48 项测试通过）· 历史变更见第 2 节 · 本文档可直接在浏览器中打开评审
+</footer>
+
+<script>
+(function(){
+  // ---- Ribbon 页签切换 ----
+  document.querySelectorAll('.rtab').forEach(function(t){
+    t.addEventListener('click', function(){
+      var rib = document.getElementById('ribbon');
+      rib.querySelectorAll('.rtab').forEach(function(x){ x.classList.remove('active'); });
+      rib.querySelectorAll('.rpanel').forEach(function(x){ x.classList.remove('active'); });
+      t.classList.add('active');
+      var p = document.getElementById(t.dataset.panel);
+      if(p) p.classList.add('active');
+    });
+  });
+
+  // ---- 表格网格选择器（8 列 × 6 行，由 JS 生成）----
+  var grid = document.getElementById('tp-grid');
+  if(grid){
+    var label = document.getElementById('tp-label');
+    var cells = [];
+    for(var r = 1; r <= 6; r++){
+      for(var c = 1; c <= 8; c++){
+        (function(r, c){
+          var d = document.createElement('div');
+          d.className = 'gc';
+          d.addEventListener('mouseenter', function(){
+            cells.forEach(function(x){
+              x.el.classList.toggle('on', x.r <= r && x.c <= c);
+            });
+            label.textContent = c + ' × ' + r + ' 表格';
+          });
+          grid.appendChild(d);
+          cells.push({el: d, r: r, c: c});
+        })(r, c);
+      }
+    }
+    grid.addEventListener('mouseleave', function(){
+      cells.forEach(function(x){ x.el.classList.remove('on'); });
+      label.textContent = '移动鼠标选择行列';
+    });
+  }
+
+  // ---- 斜杠菜单过滤演示 ----
+  var input = document.getElementById('slash-input');
+  var list = document.getElementById('slash-list');
+  if(input && list){
+    input.addEventListener('input', function(){
+      var q = input.value.trim().toLowerCase();
+      var visible = 0;
+      list.querySelectorAll('.si').forEach(function(li){
+        var hit = !q || li.dataset.kw.toLowerCase().indexOf(q) !== -1;
+        li.style.display = hit ? '' : 'none';
+        li.classList.remove('active');
+        if(hit && visible === 0) li.classList.add('active');
+        if(hit) visible++;
+      });
+      list.querySelector('.s-empty').style.display = visible ? 'none' : '';
+    });
+  }
+
+  // ---- 为功能卡片与 UI 小节自动生成锚点（供第 10 节需求跟踪表链接）----
+  document.querySelectorAll('.feat').forEach(function(card){
+    var no = card.querySelector('.fno');
+    if(no && !card.id) card.id = no.textContent.trim().toLowerCase();
+  });
+  document.querySelectorAll('h3.sub').forEach(function(h){
+    var m = h.textContent.match(/UI-\d+/);
+    if(m && !h.id) h.id = m[0].toLowerCase();
+  });
+
+  // ---- 目录 scrollspy ----
+  var secs = Array.prototype.slice.call(document.querySelectorAll('main section[id]'));
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  function spy(){
+    var cur = secs.length ? secs[0].id : '';
+    secs.forEach(function(s){
+      if(s.getBoundingClientRect().top < 150) cur = s.id;
+    });
+    links.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href') === '#' + cur);
+    });
+  }
+  window.addEventListener('scroll', spy, {passive: true});
+  spy();
+})();
+</script>
+</body>
+</html>

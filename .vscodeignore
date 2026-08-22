@@ -1,0 +1,8 @@
+.vscode/**
+.vscode-test/**
+test/**
+node_modules/**
+.gitignore
+npm-debug.log
+需求与UI设计文档.html
+.mimosa/**
