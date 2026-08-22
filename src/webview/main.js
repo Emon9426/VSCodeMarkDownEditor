@@ -382,9 +382,10 @@
       '<span class="seg" id="sbPos">行 1，列 1</span>',
       '<span class="seg grow"></span>',
       '<span class="seg clickable" id="sbWords">0 字</span>',
+      '<span class="seg clickable" id="sbFont" title="正文字体（中英分设）">🅰 跟随 / 跟随</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.3.0</span>'
+      '<span class="seg">Markdown Word v1.4.0</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -430,6 +431,8 @@
 
     buildFindBar();
     buildFloatBar();
+    buildCtxMenu();
+    bindFontDdls();
     buildTableGrid();
     bindEvents();
   }
@@ -600,6 +603,7 @@
     saveTimer = setTimeout(() => {
       setSaveState('saving');
       vscode.postMessage({ type: 'update', text: currentText() });
+      sendOutline(); // 大纲联动（防抖后随保存节拍）
     }, 500);
   }
   function setSaveState(s) {
@@ -1171,6 +1175,7 @@
       ['🖼', 'image', '图片', '本地 / 剪贴板 / URL', 'image 图片 tupian'],
       ['🔗', 'link', '链接', '插入超链接', 'link 链接 lianjie'],
       ['☰', 'toc', '目录 TOC', '按当前标题生成目录', 'toc 目录 mulu'],
+      ['⊕', 'footnote', '脚注', '插入上标引用，定义追加文末', 'footnote 脚注 jiaozhu'],
       ['ℹ', 'panelInfo', '信息面板', '四色提示框（信息/提示/警告/错误）', 'panel 面板 mianban 提示'],
       ['📅', 'datetime', '日期时间', '插入当前日期时间', 'date 日期 datetime riqi']
     ]},
@@ -1531,6 +1536,172 @@
     bar.style.top = Math.max(8, rect.top - 38) + 'px';
   }
 
+  // ================= F02 字体中英分设（文档级：CSS 变量 + 设置持久化，零源码污染） =================
+  const FONT_LISTS = {
+    latin: [['', '跟随 VS Code'], ['Segoe UI', 'Segoe UI'], ['Arial', 'Arial'], ['Georgia', 'Georgia'], ['Times New Roman', 'Times New Roman'], ['Cascadia Code', 'Cascadia Code'], ['Consolas', 'Consolas'], ['Verdana', 'Verdana'], ['Tahoma', 'Tahoma']],
+    cjk: [['', '跟随 VS Code'], ['Microsoft YaHei', '微软雅黑'], ['SimSun', '宋体'], ['KaiTi', '楷体'], ['SimHei', '黑体'], ['FangSong', '仿宋'], ['Source Han Sans SC', '思源黑体'], ['LXGW WenKai', '霞鹜文楷']]
+  };
+  function applyFontVars() {
+    const e = settings.editor || {};
+    const latin = e.fontFamilyLatin || '';
+    const cjk = e.fontFamilyCJK || '';
+    const host = $('#main') || editor.parentElement;
+    // 组合回退链：西文在前（拉丁字符优先命中），中文在后（CJK 字符回退命中）
+    const stack = [latin, cjk].filter(Boolean).map(f => '"' + f + '"');
+    stack.push('var(--vscode-editor-font-family, sans-serif)');
+    editor.style.fontFamily = stack.join(', ');
+    $('#sbFont') && ($('#sbFont').textContent = '🅰 ' + (latin || '跟随') + ' / ' + (cjk || '跟随'));
+  }
+  function setFont(key, value) {
+    settings.editor = settings.editor || {};
+    settings.editor[key] = value;
+    applyFontVars();
+    vscode.postMessage({ type: 'saveSetting', section: 'editor', key: key, value: value });
+    hideFontPanel();
+  }
+  function showFontPanel(anchor, kind) {
+    hideFontPanel();
+    const list = kind === 'cjk' ? FONT_LISTS.cjk : FONT_LISTS.latin;
+    const key = kind === 'cjk' ? 'fontFamilyCJK' : 'fontFamilyLatin';
+    const cur = (settings.editor || {})[key] || '';
+    const panel = document.createElement('div'); panel.id = 'fontPanel';
+    list.forEach(function (kv) {
+      const item = document.createElement('div');
+      item.className = 'fitem' + (kv[0] === cur ? ' on' : '');
+      item.textContent = (kv[0] === cur ? '✓ ' : '') + kv[1];
+      if (kv[0]) { item.style.fontFamily = '"' + kv[0] + '"' + (kind === 'latin' ? '' : ', sans-serif'); }
+      item.onclick = () => setFont(key, kv[0]);
+      panel.appendChild(item);
+    });
+    $('#app').appendChild(panel);
+    const r = anchor.getBoundingClientRect();
+    panel.style.display = 'block'; panel.style.position = 'fixed';
+    panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 230)) + 'px';
+    panel.style.top = (r.bottom + 6) + 'px';
+  }
+  function hideFontPanel() { const p = $('#fontPanel'); if (p) { p.remove(); } }
+  function bindFontDdls() {
+    // Ribbon「开始」页的三个字体下拉（Aa 西文 / 汉 中 / 字号）
+    const ddls = $$('#rp-home .fddl');
+    if (ddls.length >= 3) {
+      ddls[0].style.cursor = 'pointer'; ddls[0].onclick = e => showFontPanel(e.target, 'latin');
+      ddls[1].style.cursor = 'pointer'; ddls[1].onclick = e => showFontPanel(e.target, 'cjk');
+    }
+  }
+
+  // ================= F10 脚注插入 =================
+  function insertFootnote() {
+    if (!requireWysiwyg('插入脚注')) { return; }
+    // 自动编号：取现有最大数字 id
+    let max = 0;
+    $$('#editor sup.md-fn, #editor .md-fn-def').forEach(n => {
+      const id = n.getAttribute('data-fn');
+      const num = parseInt(id, 10);
+      if (!isNaN(num) && num > max) { max = num; }
+    });
+    const id = String(max + 1);
+    const sup = document.createElement('sup');
+    sup.className = 'md-fn'; sup.setAttribute('data-fn', id);
+    sup.textContent = id;
+    insertAtCaret(sup);
+    // 文末追加定义块
+    const def = document.createElement('div');
+    def.className = 'md-fn-def'; def.setAttribute('data-fn', id);
+    def.innerHTML = '<sup contenteditable="false">' + id + '</sup> ';
+    editor.appendChild(def);
+    placeCaret(def, true);
+    scheduleSave();
+    toast('脚注 ' + id + ' 已插入，定义已追加到文末');
+  }
+
+  // ================= UI-04 右键菜单 =================
+  function buildCtxMenu() {
+    const menu = document.createElement('div'); menu.id = 'ctxMenu';
+    $('#app').appendChild(menu);
+    editor.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      openCtxMenu(e.clientX, e.clientY);
+    });
+    document.addEventListener('mousedown', e => {
+      if (menu.style.display === 'block' && !menu.contains(e.target)) { menu.style.display = 'none'; }
+    });
+  }
+  function openCtxMenu(x, y) {
+    const menu = $('#ctxMenu');
+    const sel = window.getSelection();
+    const hasSel = sel && !sel.isCollapsed;
+    const inTable = caretContext().inTable;
+    const onImg = !!(closestTag && closestTag('img'));
+    const items = [];
+    if (hasSel) {
+      items.push(['✂', '剪切', () => document.execCommand('cut')]);
+      items.push(['⧉', '复制', () => document.execCommand('copy')]);
+    }
+    items.push(['📋', '粘贴（Ctrl+V）', () => toast('请直接按 Ctrl+V 粘贴')]);
+    if (hasSel) { items.push(['📄', '复制为 Markdown 源码', copySelectionAsMd]); }
+    items.push(null); // 分隔线
+    items.push(['🔗', '插入链接', () => runCommand('link')]);
+    items.push(['⊕', '插入脚注', () => insertFootnote()]);
+    items.push(['🔍', '查找替换 (Ctrl+H)', () => runCommand('replace')]);
+    if (inTable) {
+      items.push(null);
+      items.push(['↥', '上方插行', () => tableOp('rowAbove')]);
+      items.push(['↧', '下方插行', () => tableOp('rowBelow')]);
+      items.push(['✕', '删除行', () => tableOp('delRow')]);
+    }
+    if (onImg) {
+      items.push(null);
+      items.push(['🖼', '图片：编辑链接（替换 src）', () => toast('选中图片后删除重插，或切源码模式修改路径')]);
+    }
+    menu.innerHTML = '';
+    items.forEach(it => {
+      if (!it) {
+        const sep = document.createElement('div'); sep.className = 'ctx-sep';
+        menu.appendChild(sep); return;
+      }
+      const d = document.createElement('div');
+      d.className = 'ctx-item';
+      d.innerHTML = '<span class="ci">' + it[0] + '</span>' + it[1];
+      d.onclick = () => { menu.style.display = 'none'; it[2](); };
+      menu.appendChild(d);
+    });
+    menu.style.display = 'block'; menu.style.position = 'fixed';
+    menu.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - 40 * items.length - 20) + 'px';
+  }
+  function copySelectionAsMd() {
+    const b = topBlock();
+    if (!b) { return; }
+    const holder = document.createElement('div');
+    holder.appendChild(b.cloneNode(true));
+    const md = MD.blocksToMd(MD.domToBlocks(holder));
+    try {
+      navigator.clipboard.writeText(md);
+      toast('已复制 Markdown 源码');
+    } catch (e) { toast('复制失败，请手动选择'); }
+  }
+
+  // ================= F14 大纲联动 =================
+  function sendOutline() {
+    const items = [];
+    $$('#editor h1, #editor h2, #editor h3, #editor h4, #editor h5, #editor h6').forEach(h => {
+      const text = h.textContent.trim();
+      if (text) { items.push({ level: +h.tagName[1], text: text }); }
+    });
+    vscode.postMessage({ type: 'outline', items: items });
+  }
+  function gotoHeading(text) {
+    const heads = $$('#editor h1, #editor h2, #editor h3, #editor h4, #editor h5, #editor h6');
+    const target = heads.find(h => h.textContent.trim() === text);
+    if (!target) { return; }
+    try { target.scrollIntoView({ block: 'center' }); } catch (e) { /* ignore */ }
+    target.style.transition = 'background .8s';
+    const prev = target.style.background;
+    target.style.background = 'rgba(250,204,21,.5)';
+    setTimeout(() => { target.style.background = prev; }, 900);
+    placeCaret(target, true);
+  }
+
   // ================= 命令分发 =================
   function runCommand(cmd) {
     editor.focus();
@@ -1579,6 +1750,7 @@
       case 'panelTip': insertPanel('tip'); break;
       case 'panelWarning': insertPanel('warning'); break;
       case 'panelError': insertPanel('error'); break;
+      case 'footnote': case 'insertFootnote': insertFootnote(); break;
       case 'undo': execSimple('undo'); break;
       case 'redo': execSimple('redo'); break;
       case 'toggleMode': setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg'); break;
@@ -2039,8 +2211,11 @@
       case 'init':
         settings = Object.assign(settings, msg.settings || {});
         if (!settings.page) { settings.page = { size: 'fit', customWidth: 794, background: 'auto', pattern: 'none' }; }
+        if (!settings.editor) { settings.editor = {}; }
         applyPageSettings();
+        applyFontVars();
         loadMarkdown(msg.text || '');
+        sendOutline();
         setMode(settings.defaultMode === 'source' || settings.defaultMode === 'split' ? settings.defaultMode : 'wysiwyg');
         if (settings.defaultMode === 'wysiwyg') { placeCaret(editor, false); }
         setSaveState('saved');
@@ -2066,6 +2241,7 @@
         break;
       case 'imageSaved': onImageSaved(msg); break;
       case 'imageMap': applyImageMap(msg.map || {}); break;
+      case 'gotoHeading': gotoHeading(msg.text); break;
       case 'command':
         if (msg.cmd === 'insertTable') { showTablePicker(editorWrap); }
         else if (msg.cmd === 'insertImage') { openImageDialog(); }

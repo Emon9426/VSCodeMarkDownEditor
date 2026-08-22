@@ -240,5 +240,24 @@ test('M6：链接 URL 括号/空格序列化转义（DOM→md 方向由 jsdom �
   assert.ok(b[0].text.indexOf('%28bar%29') !== -1);
 });
 
+console.log('== 脚注（v1.4.0） ==');
+test('解析：脚注引用渲染为上标，定义解析为块', () => {
+  const b = MdCore.parse('正文[^1]继续\n\n[^1]: 这是脚注内容\n');
+  assert.ok(MdCore.inlineHtml('正文[^1]继续').includes('sup class="md-fn"'), '引用为 sup');
+  assert.strictEqual(b[1].type, 'footnote');
+  assert.strictEqual(b[1].id, '1');
+  assert.strictEqual(b[1].text, '这是脚注内容');
+});
+test('脚注往返（引用 + 定义）', () => {
+  const md = '正文[^1]继续\n\n[^1]: 脚注一\n\n又有[^note2]\n\n[^note2]: 脚注二\n';
+  const once = rt(md);
+  assert.ok(once.indexOf('[^1]: 脚注一') !== -1, '定义保留：' + once);
+  deepEq(MdCore.parse(md), MdCore.parse(once));
+});
+test('脚注定义渲染（md-fn-def）', () => {
+  const html = MdCore.blocksToHtml(MdCore.parse('[^1]: 内容\n'));
+  assert.ok(html.includes('md-fn-def') && html.includes('data-fn="1"'));
+});
+
 console.log('\n结果: ' + passed + ' 通过, ' + failed + ' 失败');
 if (failed) { process.exitCode = 1; }

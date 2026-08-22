@@ -2,7 +2,7 @@
   "name": "wysiwyg-markdown-editor",
   "displayName": "Markdown Word — WYSIWYG Markdown Editor",
   "description": "Word 式所见即所得 Markdown 编辑器：两行图标化 Ribbon、可视化表格、图片粘贴落盘、Confluence 式斜杠菜单、代码块（含 PL/SQL）等宽字体",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "publisher": "markdown-word",
   "license": "MIT",
   "engines": {
@@ -19,7 +19,8 @@
     "table"
   ],
   "activationEvents": [
-    "onCustomEditor:wysiwygMarkdownEditor"
+    "onCustomEditor:wysiwygMarkdownEditor",
+    "onView:markdownWordOutline"
   ],
   "main": "./src/extension.js",
   "contributes": {
@@ -59,8 +60,20 @@
       {
         "command": "wysiwygMarkdown.exportHtml",
         "title": "Markdown Word: 导出为 HTML（自包含单文件）"
+      },
+      {
+        "command": "wysiwygMarkdown.gotoHeading",
+        "title": "Markdown Word: 大纲跳转（内部命令）"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "markdownWordOutline",
+          "name": "Markdown Word 大纲"
+        }
+      ]
+    },
     "configuration": {
       "title": "Markdown Word",
       "properties": {
@@ -93,6 +106,16 @@
           "type": "boolean",
           "default": true,
           "description": "新建表格默认包含表头行"
+        },
+        "markdownWord.editor.fontFamilyLatin": {
+          "type": "string",
+          "default": "",
+          "description": "正文西文字体（拉丁字符与数字）；留空跟随 VS Code。与中文字体组合回退链，中英文自动各用其字体"
+        },
+        "markdownWord.editor.fontFamilyCJK": {
+          "type": "string",
+          "default": "Microsoft YaHei",
+          "description": "正文中文字体（CJK 字符）：Microsoft YaHei / SimSun / KaiTi / SimHei / FangSong / Source Han Sans SC 等"
         },
         "markdownWord.page.size": {
           "type": "string",

@@ -55,7 +55,11 @@
     // 2) 行内代码（先双反引号后单）
     s = s.replace(/``([^`]+)``/g, function (m, c) { return put('<code>' + escapeHtml(c) + '</code>'); });
     s = s.replace(/`([^`\n]+)`/g, function (m, c) { return put('<code>' + escapeHtml(c) + '</code>'); });
-    // 3) 图片 ![alt](src "title")
+    // 3) 脚注引用 [^id] → 上标（先于链接，避免误判）
+    s = s.replace(/\[\^([^\]\s]+)\]/g, function (m, id) {
+      return put('<sup class="md-fn" data-fn="' + escapeHtml(id) + '">' + escapeHtml(id) + '</sup>');
+    });
+    // 4) 图片 ![alt](src "title")
     s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, function (m, alt, srcUrl, title) {
       var t = title ? ' title="' + escapeHtml(title) + '"' : '';
       return put('<img alt="' + escapeHtml(alt) + '" data-src="' + escapeHtml(srcUrl) + '"' + t + '>');
@@ -85,6 +89,7 @@
 
   // ============================ 块级解析（md → blocks） ============================
   var RE_HEADING = /^(#{1,6})\s+(.*)$/;
+  var RE_FOOTNOTE_DEF = /^\[\^([^\]\s]+)\]:\s*(.*)$/;
   var RE_HR = /^ {0,3}((?:- *){3,}|(?:\* *){3,}|(?:_ *){3,})$/;
   var RE_UL = /^(\s*)[-*+]\s+(.*)$/;
   var RE_OL = /^(\s*)(\d+)[.)]\s+(.*)$/;
@@ -128,6 +133,9 @@
       // 标题
       var h = line.match(RE_HEADING);
       if (h) { blocks.push({ type: 'heading', level: h[1].length, text: h[2].trim() }); i++; continue; }
+      // 脚注定义 [^id]: text
+      var fn = line.match(RE_FOOTNOTE_DEF);
+      if (fn) { blocks.push({ type: 'footnote', id: fn[1], text: fn[2].trim() }); i++; continue; }
       // 分割线
       if (RE_HR.test(line)) { blocks.push({ type: 'hr' }); i++; continue; }
       // 引用块
@@ -254,6 +262,8 @@
     switch (b.type) {
       case 'heading':
         out.push(prefix + new Array(b.level + 1).join('#') + ' ' + b.text + '\n\n'); break;
+      case 'footnote':
+        out.push(prefix + '[^' + b.id + ']: ' + b.text + '\n\n'); break;
       case 'paragraph':
         out.push(indentLines(b.text, prefix) + '\n\n'); break;
       case 'code': {
@@ -329,6 +339,7 @@
   function blockToHtml(b) {
     switch (b.type) {
       case 'heading': return '<h' + b.level + '>' + inlineHtml(b.text) + '</h' + b.level + '>';
+      case 'footnote': return '<div class="md-fn-def" data-fn="' + escapeHtml(b.id) + '"><sup>' + escapeHtml(b.id) + '</sup> ' + inlineHtml(b.text) + '</div>';
       case 'paragraph': return '<p>' + inlineHtml(b.text) + '</p>';
       case 'code': return '<pre data-lang="' + escapeHtml(b.lang || '') + '"><code>' + hlCode(b.code, b.lang) + '</code></pre>';
       case 'hr': return '<hr>';
@@ -385,6 +396,12 @@
         case 'heading': {
           var h = doc.createElement('h' + b.level);
           h.innerHTML = inlineHtml(b.text); return h;
+        }
+        case 'footnote': {
+          var fd = doc.createElement('div');
+          fd.className = 'md-fn-def'; fd.setAttribute('data-fn', b.id);
+          fd.innerHTML = '<sup contenteditable="false">' + b.id + '</sup> ' + inlineHtml(b.text);
+          return fd;
         }
         case 'paragraph': {
           var p = doc.createElement('p'); p.innerHTML = inlineHtml(b.text); return p;
@@ -495,7 +512,11 @@
         case 'ul': case 'ol': blocks.push(domListToBlock(el)); break;
         case 'table': blocks.push(domTableToBlock(el)); break;
         case 'div':
-          if (el.classList.contains('md-raw-html') || el.classList.contains('md-panel')) {
+          if (el.classList.contains('md-fn-def')) {
+            var clone = el.cloneNode(true);
+            Array.prototype.forEach.call(clone.querySelectorAll('sup'), function (s0) { s0.remove(); });
+            blocks.push({ type: 'footnote', id: el.getAttribute('data-fn') || '1', text: serInline(clone) });
+          } else if (el.classList.contains('md-raw-html') || el.classList.contains('md-panel')) {
             // HTML 块 / 四色提示面板：以 outerHTML 原样持久化（保留 class，往返稳定）
             blocks.push({ type: 'html', raw: el.outerHTML });
           } else if (el.classList.contains('code-tools')) {
@@ -596,6 +617,11 @@
             break;
           }
           case 'br': out.push('\n'); break;
+          case 'sup':
+            if (n.classList.contains('md-fn') && n.getAttribute('data-fn')) {
+              out.push('[^' + n.getAttribute('data-fn') + ']'); break;
+            }
+            out.push(t); break;
           case 'span':
             if (n.classList.contains('md-check')) { break; }
             out.push(t); break;

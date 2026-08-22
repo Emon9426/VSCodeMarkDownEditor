@@ -8,6 +8,38 @@ const path = require('path');
 
 const VIEW_TYPE = 'wysiwygMarkdownEditor';
 
+/** 大纲视图数据源：由激活面板的 webview 推送标题列表驱动（F14） */
+class OutlineProvider {
+  constructor() {
+    this._onDidChange = new vscode.EventEmitter();
+    this.onDidChangeTreeData = this._onDidChange.event;
+    this.roots = [];
+  }
+  update(items) {
+    // 扁平标题列表 → 按层级建树
+    const nodes = items.map(it => ({ level: it.level, text: it.text, children: [] }));
+    const stack = [];
+    const roots = [];
+    nodes.forEach(n => {
+      while (stack.length && stack[stack.length - 1].level >= n.level) { stack.pop(); }
+      if (!stack.length) { roots.push(n); } else { stack[stack.length - 1].children.push(n); }
+      stack.push(n);
+    });
+    this.roots = roots;
+    this._onDidChange.fire();
+  }
+  getTreeItem(node) {
+    const item = new vscode.TreeItem(node.text);
+    item.collapsibleState = node.children.length ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.None;
+    item.command = { command: 'wysiwygMarkdown.gotoHeading', title: '跳转', arguments: [node.text] };
+    item.description = 'H' + node.level;
+    return item;
+  }
+  getChildren(node) {
+    return node ? node.children : this.roots;
+  }
+}
+
 class MarkdownWordEditorProvider {
   constructor(context) {
     this.context = context;
@@ -108,6 +140,10 @@ class MarkdownWordEditorProvider {
           });
           break;
         }
+        case 'outline': {
+          if (this.outlineProvider) { this.outlineProvider.update(msg.items || []); }
+          break;
+        }
         case 'openNative': {
           // 在 VS Code 原生编辑器中并排打开（语法高亮 / 行号 / 多光标），保留本编辑器便于切回
           vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.Beside, preview: false })
@@ -146,6 +182,10 @@ class MarkdownWordEditorProvider {
         customWidth: cfg.get('page.customWidth') || 794,
         background: cfg.get('page.background') || 'auto',
         pattern: cfg.get('page.pattern') || 'none'
+      },
+      editor: {
+        fontFamilyLatin: cfg.get('editor.fontFamilyLatin') || '',
+        fontFamilyCJK: cfg.get('editor.fontFamilyCJK') || ''
       }
     };
   }
@@ -208,11 +248,14 @@ class MarkdownWordEditorProvider {
 
 function activate(context) {
   const provider = new MarkdownWordEditorProvider(context);
+  const outlineProvider = new OutlineProvider();
+  provider.outlineProvider = outlineProvider;
   const registration = vscode.window.registerCustomEditorProvider(
     VIEW_TYPE,
     provider,
     { webviewOptions: { retainContextWhenHidden: true }, supportsMultipleEditorsPerDocument: false }
   );
+  const outlineView = vscode.window.createTreeView('markdownWordOutline', { treeDataProvider: outlineProvider });
 
   const sendToActive = payload => {
     if (provider.activeWebview) { provider.activeWebview.postMessage(payload); }
@@ -223,12 +266,13 @@ function activate(context) {
     vscode.commands.registerCommand('wysiwygMarkdown.toggleMode', () => sendToActive({ type: 'command', cmd: 'toggleMode' })),
     vscode.commands.registerCommand('wysiwygMarkdown.insertTable', () => sendToActive({ type: 'command', cmd: 'insertTable' })),
     vscode.commands.registerCommand('wysiwygMarkdown.insertImage', () => sendToActive({ type: 'command', cmd: 'insertImage' })),
-    vscode.commands.registerCommand('wysiwygMarkdown.insertTOC', () => sendToActive({ type: 'command', cmd: 'insertDatetime' })),
+    vscode.commands.registerCommand('wysiwygMarkdown.insertTOC', () => sendToActive({ type: 'command', cmd: 'insertTOC' })),
     vscode.commands.registerCommand('wysiwygMarkdown.pageSetup', () => sendToActive({ type: 'command', cmd: 'pageSetup' })),
-    vscode.commands.registerCommand('wysiwygMarkdown.exportHtml', () => sendToActive({ type: 'command', cmd: 'exportHtml' }))
+    vscode.commands.registerCommand('wysiwygMarkdown.exportHtml', () => sendToActive({ type: 'command', cmd: 'exportHtml' })),
+    vscode.commands.registerCommand('wysiwygMarkdown.gotoHeading', text => sendToActive({ type: 'gotoHeading', text: text }))
   ];
 
-  context.subscriptions.push(registration, ...cmds);
+  context.subscriptions.push(registration, outlineView, ...cmds);
 }
 
 function deactivate() { /* nothing */ }

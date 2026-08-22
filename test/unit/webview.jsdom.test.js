@@ -552,6 +552,60 @@ test('F09：代码块在编辑区渲染高亮 span（经 MdHl）', () => {
   assert.ok(q('#editor pre code .hljs-kw').textContent === 'SELECT');
 });
 
+// ================= v1.4.0 新功能回归 =================
+test('F10：斜杠/命令插入脚注（sup 引用 + 文末定义）', async () => {
+  win.__onMessage({ data: { type: 'init', text: '正文段落。\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  win.__onMessage({ data: { type: 'command', cmd: 'insertFootnote' } });
+  assert.ok(q('#editor sup.md-fn'), '上标引用已插入');
+  assert.strictEqual(q('#editor sup.md-fn').getAttribute('data-fn'), '1', '自动编号 1');
+  assert.ok(q('#editor .md-fn-def'), '定义块追加文末');
+  await wait(650);
+  const md = postMessages().filter(m => m.type === 'update').pop().text;
+  assert.ok(md.indexOf('[^1]') !== -1 && md.indexOf('[^1]:') !== -1, '写盘含引用与定义');
+  win.__onMessage({ data: { type: 'externalChange', text: md } });
+  assert.ok(q('#editor sup.md-fn') && q('#editor .md-fn-def'), '往返保留');
+});
+test('F02：字体面板选择 → 应用 + 持久化消息', () => {
+  win.__onMessage({ data: { type: 'init', text: '正文\n', settings: { editor: {} } } });
+  const ddls = qa('#rp-home .fddl');
+  assert.ok(ddls.length >= 2, '字体下拉存在');
+  ddls[1].dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  const panel = q('#fontPanel');
+  assert.ok(panel, '字体面板弹出');
+  const item = qa('#fontPanel .fitem').find(i => i.textContent.indexOf('宋体') !== -1);
+  click(item);
+  const saved = postMessages().filter(m => m.type === 'saveSetting').pop();
+  assert.ok(saved && saved.key === 'fontFamilyCJK' && saved.value === 'SimSun', '持久化：' + JSON.stringify(saved));
+  assert.ok(/SimSun/.test(q('#editor').style.fontFamily), '字体栈应用：' + q('#editor').style.fontFamily);
+});
+test('UI-04：右键菜单打开并执行「查找替换」', () => {
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  q('#editor').dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 100, clientY: 100 }));
+  const menu = q('#ctxMenu');
+  assert.ok(menu && menu.style.display === 'block', '菜单打开');
+  assert.ok(qa('#ctxMenu .ctx-item').length >= 4, '含菜单项');
+  const findItem = qa('#ctxMenu .ctx-item').find(i => i.textContent.indexOf('查找替换') !== -1);
+  click(findItem);
+  assert.strictEqual(q('#findBar').style.display, 'flex', '点击后打开查找替换');
+  click(q('#fClose'));
+});
+test('F14：大纲推送与跳转', () => {
+  win.__onMessage({ data: { type: 'init', text: '# 一级\n\n## 二级A\n\n正文\n', settings: {} } });
+  const outline = postMessages().filter(m => m.type === 'outline').pop();
+  assert.ok(outline && outline.items.length === 2, '推送 2 个标题');
+  assert.strictEqual(JSON.stringify(outline.items[1]), JSON.stringify({ level: 2, text: '二级A' }));
+  // 跳转（宿主点击大纲后回发）
+  win.__onMessage({ data: { type: 'gotoHeading', text: '二级A' } });
+  const selNode = sel().anchorNode;
+  let cur = selNode, ok = false;
+  while (cur) { if (cur.textContent === '二级A') { ok = true; break; } cur = cur.parentNode; }
+  assert.ok(ok, '光标跳到目标标题');
+});
+
 chain.then(() => {
   console.log('\n结果: ' + (failed ? failed + ' 项失败' : '全部通过'));
   if (failed) { process.exitCode = 1; }
