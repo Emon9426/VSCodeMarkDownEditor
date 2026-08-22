@@ -2,7 +2,7 @@
   "name": "wysiwyg-markdown-editor",
   "displayName": "Markdown Word — WYSIWYG Markdown Editor",
   "description": "Word 式所见即所得 Markdown 编辑器：两行图标化 Ribbon、可视化表格、图片粘贴落盘、Confluence 式斜杠菜单、代码块（含 PL/SQL）等宽字体",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "publisher": "markdown-word",
   "license": "MIT",
   "engines": {
@@ -55,6 +55,10 @@
       {
         "command": "wysiwygMarkdown.pageSetup",
         "title": "Markdown Word: 页面设置…（纸张尺寸 / 背景色 / 条纹）"
+      },
+      {
+        "command": "wysiwygMarkdown.exportHtml",
+        "title": "Markdown Word: 导出为 HTML（自包含单文件）"
       }
     ],
     "configuration": {

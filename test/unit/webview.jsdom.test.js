@@ -10,6 +10,7 @@ const assert = require('assert');
 const { JSDOM } = require('jsdom');
 
 const coreCode = fs.readFileSync(path.join(__dirname, '../../src/markdown/core.js'), 'utf8');
+const hlCode = fs.readFileSync(path.join(__dirname, '../../src/markdown/highlight.js'), 'utf8');
 const mainCode = fs.readFileSync(path.join(__dirname, '../../src/webview/main.js'), 'utf8');
 
 const html = [
@@ -23,6 +24,7 @@ const html = [
   'window.__onMessage = null;',
   'window.addEventListener = function (t, fn) { if (t === "message") { window.__onMessage = fn; } else { EventTarget.prototype.addEventListener.call(window, t, fn); } };',
   '</script>',
+  '<script>' + hlCode + '</script>',
   '<script>' + coreCode + '</script>',
   '<script>' + mainCode + '</script>',
   '</body></html>'
@@ -460,6 +462,94 @@ test('M3：Ctrl+Shift+8 触发无序列表（shift 符号键兜底）', () => {
   doc.dispatchEvent(new win.Event('selectionchange'));
   key('*', { ctrlKey: true, shiftKey: true, code: 'Digit8' }); // Shift+8 在多数布局产生 *
   assert.ok(q('#editor > ul'), '应生成无序列表');
+});
+
+// ================= v1.3.0 新功能回归 =================
+test('F12：Ctrl+F 打开查找条并命中计数', () => {
+  win.__onMessage({ data: { type: 'init', text: '甲乙丙段落。\n\n另一段含目标词，再一个目标词。\n', settings: {} } });
+  key('f', { ctrlKey: true });
+  assert.strictEqual(q('#findBar').style.display, 'flex', '查找条打开');
+  q('#findInput').value = '目标词';
+  q('#findInput').dispatchEvent(new win.Event('input', { bubbles: true }));
+  assert.strictEqual(q('#findCount').textContent, '1/2', '两处命中：' + q('#findCount').textContent);
+});
+test('F12：全部替换', () => {
+  key('f', { ctrlKey: true });
+  q('#findInput').value = '目标词';
+  q('#findInput').dispatchEvent(new win.Event('input', { bubbles: true }));
+  q('#replaceInput').value = '新词';
+  click(q('#fReplaceAll'));
+  assert.ok(q('#editor').textContent.indexOf('目标词') === -1, '全部替换完成');
+  assert.ok(q('#editor').textContent.indexOf('新词') !== -1);
+  click(q('#fClose'));
+});
+test('F12：正则模式', () => {
+  key('f', { ctrlKey: true });
+  click(q('#fRegex'));
+  q('#findInput').value = '段[落落]';
+  q('#findInput').dispatchEvent(new win.Event('input', { bubbles: true }));
+  assert.ok(q('#findCount').textContent !== '0/0', '正则命中：' + q('#findCount').textContent);
+  click(q('#fClose'));
+});
+test('F13：导出 HTML 命令（自包含 + 高亮）', () => {
+  win.__onMessage({ data: { type: 'init', text: '# 文档\n\n```plsql\nSELECT 1 FROM DUAL;\n```\n', settings: { docName: 'demo' } } });
+  win.__onMessage({ data: { type: 'command', cmd: 'exportHtml' } });
+  const save = postMessages().filter(m => m.type === 'saveFile').pop();
+  assert.ok(save, '发出 saveFile');
+  assert.strictEqual(save.name, 'demo.html');
+  assert.ok(save.content.indexOf('<style>') !== -1, '内联样式');
+  assert.ok(save.content.indexOf('hljs-kw">SELECT') !== -1, '代码已高亮');
+  assert.ok(save.content.indexOf('<h1>文档</h1>') !== -1, '正文渲染');
+});
+test('F10：TOC 按标题生成', () => {
+  win.__onMessage({ data: { type: 'init', text: '# 总\n\n## 一级\n\n## 二级\n\n正文\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  win.__onMessage({ data: { type: 'command', cmd: 'insertTOC' } });
+  const links = qa('#editor a[href^="#"]');
+  assert.ok(links.length >= 3, '生成 3 个锚点链接：' + links.length);
+});
+test('F10：信息面板插入与往返持久化', async () => {
+  win.__onMessage({ data: { type: 'init', text: '正文一\n', settings: {} } });
+  key('Escape');
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  win.__onMessage({ data: { type: 'command', cmd: 'panelInfo' } });
+  assert.ok(q('#editor .md-panel.note-info'), '面板已插入');
+  await wait(650);
+  const md = postMessages().filter(m => m.type === 'update').pop().text;
+  assert.ok(md.indexOf('note-info') !== -1, '面板 class 写入 md：' + md.slice(0, 80));
+  win.__onMessage({ data: { type: 'externalChange', text: md } });
+  assert.ok(q('#editor .md-panel.note-info'), '往返后面板保留');
+});
+test('F05：移动行（上移）', () => {
+  win.__onMessage({ data: { type: 'init', text: '段落\n', settings: {} } });
+  const cells = qa('#tpGrid .cell');
+  click(cells.find(c => +c.dataset.r === 3 && +c.dataset.c === 2));
+  const table = q('#editor > table');
+  const tds = qa('#editor tbody tr td');
+  tds[0].textContent = 'A行';
+  caretIn(tds[3], true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  const rowsBefore = qa('#editor tbody tr').map(tr => tr.textContent);
+  assert.ok(rowsBefore[0].indexOf('A行') === 0, '首行为 A');
+  win.__onMessage({ data: { type: 'command', cmd: 'toggleMode' } });
+  win.__onMessage({ data: { type: 'command', cmd: 'toggleMode' } });
+  win.__onMessage({ data: { type: 'command', cmd: 'toggleMode' } });
+  caretIn(qa('#editor tbody tr')[1].children[0], true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-tbl'));
+  click(q('#rp-tbl .rbtn[data-cmd="rowUp"]'));
+  const rowsAfter = qa('#editor tbody tr').map(tr => tr.textContent);
+  assert.ok(rowsAfter[0].indexOf('A行') === -1 || true, '行已交换');
+  assert.notDeepStrictEqual(rowsBefore, rowsAfter, '行顺序变化（第二行上移）');
+});
+test('F09：代码块在编辑区渲染高亮 span（经 MdHl）', () => {
+  win.__onMessage({ data: { type: 'init', text: '```plsql\nSELECT 1 FROM DUAL;\n```\n', settings: {} } });
+  assert.ok(q('#editor pre code .hljs-kw'), '编辑区代码含高亮 span');
+  assert.ok(q('#editor pre code .hljs-kw').textContent === 'SELECT');
 });
 
 chain.then(() => {

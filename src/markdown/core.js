@@ -316,6 +316,13 @@
   }
 
   // ============================ blocks → html（预览） ============================
+  // 代码块高亮：若同环境加载了 MdHl（src/markdown/highlight.js）则着色，否则纯文本（安全退化）
+  function hlCode(code, lang) {
+    if (typeof MdHl !== 'undefined' && MdHl && typeof MdHl.highlight === 'function') {
+      return MdHl.highlight(code, lang);
+    }
+    return escapeHtml(code);
+  }
   function blocksToHtml(blocks) {
     return blocks.map(function (b) { return blockToHtml(b); }).join('');
   }
@@ -323,7 +330,7 @@
     switch (b.type) {
       case 'heading': return '<h' + b.level + '>' + inlineHtml(b.text) + '</h' + b.level + '>';
       case 'paragraph': return '<p>' + inlineHtml(b.text) + '</p>';
-      case 'code': return '<pre data-lang="' + escapeHtml(b.lang || '') + '"><code>' + escapeHtml(b.code) + '</code></pre>';
+      case 'code': return '<pre data-lang="' + escapeHtml(b.lang || '') + '"><code>' + hlCode(b.code, b.lang) + '</code></pre>';
       case 'hr': return '<hr>';
       case 'quote': return '<blockquote>' + blocksToHtml(b.blocks) + '</blockquote>';
       case 'list':
@@ -383,8 +390,9 @@
           var p = doc.createElement('p'); p.innerHTML = inlineHtml(b.text); return p;
         }
         case 'code': {
-          var pre = doc.createElement('pre'); pre.setAttribute('data-lang', b.lang || '');
-          var code = doc.createElement('code'); code.textContent = b.code;
+          var pre = document.createElement('pre'); pre.setAttribute('data-lang', b.lang || '');
+          var code = document.createElement('code');
+          code.innerHTML = hlCode(b.code, b.lang); // 高亮 span；序列化走 codeText() 递归取文本，不受影响
           pre.appendChild(code); return pre;
         }
         case 'hr': return doc.createElement('hr');
@@ -436,7 +444,7 @@
         }
         case 'html': {
           var d = doc.createElement('div'); d.className = 'md-raw-html';
-          d.setAttribute('contenteditable', 'false'); d.innerHTML = b.raw; return d;
+          d.innerHTML = b.raw; return d; // 保持可编辑（面板等 HTML 块内容可直接修改）
         }
       }
       var p2 = doc.createElement('p'); return p2;
@@ -487,8 +495,9 @@
         case 'ul': case 'ol': blocks.push(domListToBlock(el)); break;
         case 'table': blocks.push(domTableToBlock(el)); break;
         case 'div':
-          if (el.classList.contains('md-raw-html')) {
-            blocks.push({ type: 'html', raw: el.innerHTML });
+          if (el.classList.contains('md-raw-html') || el.classList.contains('md-panel')) {
+            // HTML 块 / 四色提示面板：以 outerHTML 原样持久化（保留 class，往返稳定）
+            blocks.push({ type: 'html', raw: el.outerHTML });
           } else if (el.classList.contains('code-tools')) {
             // 代码块工具条（UI 附属结构），序列化时忽略
           } else {

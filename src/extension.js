@@ -24,6 +24,7 @@ class MarkdownWordEditorProvider {
 
     const uris = {
       core: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'markdown', 'core.js')),
+      hljs: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'markdown', 'highlight.js')),
       main: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'webview', 'main.js')),
       style: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'webview', 'style.css'))
     };
@@ -91,6 +92,20 @@ class MarkdownWordEditorProvider {
           vscode.workspace.getConfiguration('markdownWord').update(fullKey, msg.value, target)
             .then(() => { webview.postMessage({ type: 'settingSaved', key: fullKey, value: msg.value }); },
               err => { webview.postMessage({ type: 'info', text: '设置保存失败：' + String(err && err.message || err) }); });
+          break;
+        }
+        case 'saveFile': {
+          // 导出等场景：把 webview 组装好的内容写入文档同级目录
+          const dir = vscode.Uri.joinPath(document.uri, '..');
+          const fileUri = vscode.Uri.joinPath(dir, msg.name);
+          vscode.workspace.fs.writeFile(fileUri, Buffer.from(String(msg.content || ''), 'utf8')).then(() => {
+            webview.postMessage({ type: 'info', text: '已导出：' + msg.name });
+            vscode.window.showInformationMessage('Markdown Word: 已导出 ' + msg.name, '打开所在文件夹').then(choice => {
+              if (choice === '打开所在文件夹') { vscode.commands.executeCommand('revealFileInOS', dir); }
+            });
+          }, err => {
+            vscode.window.showWarningMessage('导出失败：' + String(err && err.message || err));
+          });
           break;
         }
         case 'openNative': {
@@ -183,6 +198,7 @@ class MarkdownWordEditorProvider {
       '<link rel="stylesheet" href="' + uris.style + '">',
       '</head><body>',
       '<div id="app"></div>',
+      '<script src="' + uris.hljs + '"></script>',
       '<script src="' + uris.core + '"></script>',
       '<script src="' + uris.main + '"></script>',
       '</body></html>'
@@ -208,7 +224,8 @@ function activate(context) {
     vscode.commands.registerCommand('wysiwygMarkdown.insertTable', () => sendToActive({ type: 'command', cmd: 'insertTable' })),
     vscode.commands.registerCommand('wysiwygMarkdown.insertImage', () => sendToActive({ type: 'command', cmd: 'insertImage' })),
     vscode.commands.registerCommand('wysiwygMarkdown.insertTOC', () => sendToActive({ type: 'command', cmd: 'insertDatetime' })),
-    vscode.commands.registerCommand('wysiwygMarkdown.pageSetup', () => sendToActive({ type: 'command', cmd: 'pageSetup' }))
+    vscode.commands.registerCommand('wysiwygMarkdown.pageSetup', () => sendToActive({ type: 'command', cmd: 'pageSetup' })),
+    vscode.commands.registerCommand('wysiwygMarkdown.exportHtml', () => sendToActive({ type: 'command', cmd: 'exportHtml' }))
   ];
 
   context.subscriptions.push(registration, ...cmds);
