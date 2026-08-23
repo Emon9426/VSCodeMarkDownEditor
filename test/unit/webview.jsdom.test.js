@@ -606,6 +606,118 @@ test('F14：大纲推送与跳转', () => {
   assert.ok(ok, '光标跳到目标标题');
 });
 
+// ================= v1.5.0 新功能回归 =================
+test('F15 AI：无 Copilot 时优雅降级（aiError → toast 登录提示）', () => {
+  win.__onMessage({ data: { type: 'init', text: '正文\n', settings: { ai: { enabled: true } } } });
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  // 模拟选区 + AI 菜单动作（rewrite）
+  const r = doc.createRange();
+  r.selectNodeContents(p);
+  sel().removeAllRanges(); sel().addRange(r);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  const ftBar = q('#ftBar');
+  const aiBtn = qa('#ftBar .rbtn').find(b => b.dataset.cmd === 'aiMenu');
+  assert.ok(aiBtn, '浮动条含 ✨AI 按钮');
+  click(aiBtn);
+  assert.ok(q('#aiMenu').style.display === 'block', 'AI 菜单弹出');
+  click(qa('#aiMenu .ctx-item')[0]); // rewrite
+  assert.ok(q('#aiCard'), 'AI 卡已创建');
+  assert.ok(q('#aiCard').style.display === 'block', 'AI 卡显示（等待流式）');
+  // 宿主回 no-model
+  win.__onMessage({ data: { type: 'aiError', id: win.__posted.filter(m => m.type === 'ai').pop().id, error: 'no-model' } });
+  assert.strictEqual(q('#aiCard').style.display, 'none', 'AI 卡关闭');
+  assert.ok(q('#toast').textContent.indexOf('Copilot') !== -1, '给出登录提示');
+});
+test('F15 AI：流式接收并接受替换选区', () => {
+  win.__onMessage({ data: { type: 'init', text: '原始句子。\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  const r = doc.createRange();
+  r.selectNodeContents(p);
+  sel().removeAllRanges(); sel().addRange(r);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  // 直接走 startSelAi 等价路径：模拟浮动条 → 润色
+  const aiBtn = qa('#ftBar .rbtn').find(b => b.dataset.cmd === 'aiMenu');
+  click(aiBtn);
+  click(qa('#aiMenu .ctx-item')[1]); // polish
+  const aiMsg = postMessages().filter(m => m.type === 'ai').pop();
+  assert.ok(aiMsg && aiMsg.cmd === 'polish', 'AI 请求已发出（宿主转发 Copilot）');
+  assert.strictEqual(aiMsg.text, '原始句子。', '选区文本随请求发送');
+  win.__onMessage({ data: { type: 'aiChunk', id: aiMsg.id, delta: '润色后的句子。' } });
+  win.__onMessage({ data: { type: 'aiDone', id: aiMsg.id, empty: false } });
+  assert.ok(q('#aiCard .ai-result').textContent.indexOf('润色后') !== -1, '流式结果显示');
+  const accept = qa('#aiCard .ai-act')[3];
+  assert.strictEqual(accept.disabled, false, '接受按钮已启用');
+  click(accept);
+  assert.ok(q('#editor').textContent.indexOf('润色后的句子') !== -1, '选区被替换');
+  assert.ok(q('#editor').textContent.indexOf('原始句子') === -1, '原文已移除');
+});
+test('F02：选区级字体（行内 span 白名单往返）', async () => {
+  win.__onMessage({ data: { type: 'init', text: '字体测试段落。\n', settings: { ui: { language: 'zh-CN' }, editor: { fontFamilyLatin: 'Georgia', fontFamilyCJK: 'KaiTi' } } } });
+  const p = qa('#editor > p')[0];
+  const r = doc.createRange();
+  r.selectNodeContents(p);
+  sel().removeAllRanges(); sel().addRange(r);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  const ddls = qa('#rp-home .fddl');
+  ddls[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  const applyBtn = qa('#fontPanel .fitem').find(i => i.textContent.indexOf('选中') !== -1);
+  assert.ok(applyBtn, '字体面板含"应用于选中文字"');
+  click(applyBtn);
+  assert.ok(q('#editor span[style*="font-family"]'), '行内 span 已包裹');
+  await wait(650);
+  const md = postMessages().filter(m => m.type === 'update').pop().text;
+  assert.ok(md.indexOf('<span style="font-family:') !== -1, '行内 HTML 持久化：' + md.slice(0, 60));
+  // 往返（白名单还原）
+  win.__onMessage({ data: { type: 'externalChange', text: md } });
+  assert.ok(q('#editor span[style*="font-family"]'), '重载后 span 还原');
+});
+test('F14 面包屑：光标在二级标题下显示路径', () => {
+  win.__onMessage({ data: { type: 'init', text: '# 顶层\n\n## 子节\n\n正文\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  const crumb = q('#crumb');
+  assert.ok(crumb, '面包屑存在');
+  assert.ok(crumb.textContent.indexOf('顶层') !== -1 && crumb.textContent.indexOf('子节') !== -1, '路径：' + crumb.textContent);
+  assert.ok(crumb.textContent.indexOf('›') !== -1, '层级分隔符');
+});
+test('i18n：语言切换（中文 ↔ English）', async () => {
+  win.__onMessage({ data: { type: 'init', text: '正文\n', settings: { ui: { language: 'zh-CN' } } } });
+  assert.ok(q('#sbLang').textContent.indexOf('中文') !== -1, '默认中文');
+  click(q('#sbLang'));
+  await wait(30);
+  assert.ok(q('#sbLang').textContent.indexOf('English') !== -1, '切换为英文');
+  const saved = postMessages().filter(m => m.type === 'saveSetting').pop();
+  assert.ok(saved && saved.key === 'language' && saved.value === 'en', '持久化语言设置');
+  click(q('#sbLang')); // 切回
+  await wait(30);
+  assert.ok(q('#sbLang').textContent.indexOf('中文') !== -1);
+});
+test('PDF：导出打印页并请求外部打开', () => {
+  win.__onMessage({ data: { type: 'init', text: '# 文档\n\n内容\n', settings: { docName: 'demo' } } });
+  win.__onMessage({ data: { type: 'command', cmd: 'exportPdf' } });
+  const save = postMessages().filter(m => m.type === 'saveFile').pop();
+  assert.ok(save && save.name === 'demo.print.html', '打印页生成');
+  assert.ok(save.content.indexOf('@page') !== -1, '含 @page 打印样式');
+});
+test('智能粘贴：Word mso-list 段落还原为列表', () => {
+  win.__onMessage({ data: { type: 'init', text: '粘贴目标。\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  const WORD_HTML = '<p class=MsoListParagraph style="mso-list:l1 level1"><span>顶层项</span></p>' +
+    '<p class=MsoListParagraph style="mso-list:l1 level2"><span>子项</span></p>' +
+    '<p>普通段落</p>';
+  const ev = new win.Event('paste', { bubbles: true, cancelable: true });
+  ev.clipboardData = { items: [], getData: t => (t === 'text/html' ? WORD_HTML : '') };
+  q('#editor').dispatchEvent(ev);
+  const lists = qa('#editor ul');
+  assert.ok(lists.length >= 1, '列表已还原');
+  const sub = qa('#editor ul ul li');
+  assert.ok(sub.length >= 1 && sub[0].textContent === '子项', '嵌套子项：' + (sub[0] ? sub[0].textContent : '无'));
+});
+
 chain.then(() => {
   console.log('\n结果: ' + (failed ? failed + ' 项失败' : '全部通过'));
   if (failed) { process.exitCode = 1; }

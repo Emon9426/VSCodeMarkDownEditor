@@ -2,11 +2,11 @@
   "name": "wysiwyg-markdown-editor",
   "displayName": "Markdown Word — WYSIWYG Markdown Editor",
   "description": "Word 式所见即所得 Markdown 编辑器：两行图标化 Ribbon、可视化表格、图片粘贴落盘、Confluence 式斜杠菜单、代码块（含 PL/SQL）等宽字体",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "publisher": "markdown-word",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.95.0"
   },
   "categories": [
     "Other"
@@ -60,6 +60,10 @@
       {
         "command": "wysiwygMarkdown.exportHtml",
         "title": "Markdown Word: 导出为 HTML（自包含单文件）"
+      },
+      {
+        "command": "wysiwygMarkdown.exportPdf",
+        "title": "Markdown Word: 导出为 PDF（生成打印就绪页面并在浏览器中打印）"
       },
       {
         "command": "wysiwygMarkdown.gotoHeading",
@@ -116,6 +120,22 @@
           "type": "string",
           "default": "Microsoft YaHei",
           "description": "正文中文字体（CJK 字符）：Microsoft YaHei / SimSun / KaiTi / SimHei / FangSong / Source Han Sans SC 等"
+        },
+        "markdownWord.ai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "AI 助手（复用 VS Code 已登录的 GitHub Copilot，经官方 Language Model API；关闭则隐藏全部 AI 入口）"
+        },
+        "markdownWord.ai.model": {
+          "type": "string",
+          "default": "",
+          "description": "AI 模型（留空跟随 Copilot 默认；填写模型 id 或名称关键字，如 gpt / claude）"
+        },
+        "markdownWord.ui.language": {
+          "type": "string",
+          "default": "auto",
+          "enum": ["auto", "zh-CN", "en"],
+          "description": "界面语言：auto 跟随 VS Code 显示语言；切换即时生效"
         },
         "markdownWord.page.size": {
           "type": "string",

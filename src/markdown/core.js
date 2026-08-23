@@ -75,6 +75,11 @@
     });
     // 5.5) 剩余纯文本 HTML 转义（此时真实 HTML 均已进入占位符，不会误伤）
     s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // 5.6) 白名单行内样式 span 还原（选区级字体持久化，F02）：&lt;span style="font-family:..."&gt; → 真实标签
+    s = s.replace(/&lt;(\/?)span style=&quot;font-family:[^&]*&gt;/g, function (m0, slash) {
+      var m2 = /font-family:([^&]*)&gt;/.exec(m0);
+      return '<' + slash + 'span style="font-family:' + (m2 ? m2[1] : '') + '">';
+    });
     // 6) 强调标记
     s = emph(s);
     // 7) 恢复占位（slot 内可能嵌套占位，循环到干净）
@@ -624,6 +629,11 @@
             out.push(t); break;
           case 'span':
             if (n.classList.contains('md-check')) { break; }
+            if ((n.getAttribute('style') || '').indexOf('font-family') !== -1) {
+              // 选区级字体：以行内 HTML 持久化（inlineHtml 白名单还原，F02）
+              out.push('<span style="' + n.getAttribute('style') + '">' + t + '</span>');
+              break;
+            }
             out.push(t); break;
           default: out.push(t);
         }

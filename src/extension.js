@@ -46,6 +46,64 @@ class MarkdownWordEditorProvider {
     this.activeWebview = null; // 当前激活面板的 webview（供命令转发）
   }
 
+  // ================= F15 AI 通道（GitHub Copilot · Language Model API） =================
+  // 复用 VS Code 已登录的 Copilot（vscode.lm，1.95+）；未登录/禁用时优雅降级。
+  async handleAi(webview, msg) {
+    if (!this.readSettingsAiEnabled()) {
+      webview.postMessage({ type: 'aiError', id: msg.id, error: 'disabled' });
+      return;
+    }
+    const lm = vscode.lm;
+    if (!lm || typeof lm.selectChatModels !== 'function') {
+      webview.postMessage({ type: 'aiError', id: msg.id, error: 'no-lm' });
+      return;
+    }
+    let models = [];
+    try { models = await lm.selectChatModels({ vendor: 'copilot' }); } catch (_e) { models = []; }
+    if (!models.length) {
+      webview.postMessage({ type: 'aiError', id: msg.id, error: 'no-model' });
+      return;
+    }
+    const want = (this.readSettingsAiModel() || '').toLowerCase();
+    const model = (want && models.find(m => String(m.id).toLowerCase().indexOf(want) !== -1 || String(m.name).toLowerCase().indexOf(want) !== -1)) || models[0];
+    const PROMPTS = {
+      rewrite: '改写下述文本，保持原意，表达更清晰自然。仅输出改写结果，不要解释。',
+      polish: '润色下述文本：更书面、更流畅、修正语病。仅输出润色结果。',
+      expand: '扩写下述文本，补充细节与论证，篇幅约为原文 1.5–2 倍。仅输出扩写结果。',
+      shorten: '压缩下述文本至一半左右篇幅，保留全部关键信息。仅输出结果。',
+      translate_zh: '将下述文本翻译为简体中文。仅输出译文。',
+      translate_en: '将下述文本翻译为英文。仅输出译文。',
+      fix: '修正下述文本中的错别字与标点，不改变其他内容。仅输出修正结果。',
+      outline: '为下述小节生成 Markdown 大纲：每行一个 "### 标题 · 要点提示" 格式的条目（3-6 条），仅输出大纲行，不要其他解释。',
+      continue: '续写下述文本，衔接自然，续写 1-2 段。仅输出续写内容。',
+      summarize: '用 3-5 句话总结下述内容。仅输出总结。'
+    };
+    const system = '你是嵌入在 Markdown 编辑器中的中文写作助手。输出必须是纯 Markdown 正文片段，不使用代码围栏包裹整体，不添加任何解释性前后缀。';
+    const userText = PROMPTS[msg.cmd] ? (PROMPTS[msg.cmd] + '\n\n---\n' + (msg.text || '')) : (('指令：' + (msg.instruction || '') + '\n\n---\n') + (msg.text || ''));
+    const messages = [
+      { role: vscode.LanguageModelChatMessage.Role.System, content: system },
+      { role: vscode.LanguageModelChatMessage.Role.User, content: userText }
+    ];
+    try {
+      const resp = await model.sendRequest(messages, {});
+      let any = false;
+      for await (const chunk of resp.text) {
+        any = true;
+        webview.postMessage({ type: 'aiChunk', id: msg.id, delta: String(chunk) });
+      }
+      webview.postMessage({ type: 'aiDone', id: msg.id, empty: !any });
+    } catch (err) {
+      const m = String(err && err.message || err);
+      webview.postMessage({ type: 'aiError', id: msg.id, error: m.indexOf('not signed') !== -1 || m.indexOf('login') !== -1 ? 'no-model' : m });
+    }
+  }
+  readSettingsAiEnabled() {
+    try { return vscode.workspace.getConfiguration('markdownWord').get('ai.enabled') !== false; } catch (_e) { return true; }
+  }
+  readSettingsAiModel() {
+    try { return vscode.workspace.getConfiguration('markdownWord').get('ai.model') || ''; } catch (_e) { return ''; }
+  }
+
   resolveCustomTextEditor(document, webviewPanel, _token) {
     const webview = webviewPanel.webview;
     webview.options = { enableScripts: true, localResourceRoots: [this.context.extensionUri] };
@@ -140,6 +198,18 @@ class MarkdownWordEditorProvider {
           });
           break;
         }
+        case 'ai': {
+          this.handleAi(webview, msg).catch(err => {
+            webview.postMessage({ type: 'aiError', id: msg.id, error: String(err && err.message || err) });
+          });
+          break;
+        }
+        case 'openExternal': {
+          try {
+            vscode.env.openExternal(vscode.Uri.joinPath(vscode.Uri.joinPath(document.uri, '..'), msg.name));
+          } catch (_e) { /* ignore */ }
+          break;
+        }
         case 'outline': {
           if (this.outlineProvider) { this.outlineProvider.update(msg.items || []); }
           break;
@@ -186,6 +256,13 @@ class MarkdownWordEditorProvider {
       editor: {
         fontFamilyLatin: cfg.get('editor.fontFamilyLatin') || '',
         fontFamilyCJK: cfg.get('editor.fontFamilyCJK') || ''
+      },
+      ai: {
+        enabled: cfg.get('ai.enabled') !== false,
+        model: cfg.get('ai.model') || ''
+      },
+      ui: {
+        language: cfg.get('ui.language') || 'auto'
       }
     };
   }
@@ -269,6 +346,7 @@ function activate(context) {
     vscode.commands.registerCommand('wysiwygMarkdown.insertTOC', () => sendToActive({ type: 'command', cmd: 'insertTOC' })),
     vscode.commands.registerCommand('wysiwygMarkdown.pageSetup', () => sendToActive({ type: 'command', cmd: 'pageSetup' })),
     vscode.commands.registerCommand('wysiwygMarkdown.exportHtml', () => sendToActive({ type: 'command', cmd: 'exportHtml' })),
+    vscode.commands.registerCommand('wysiwygMarkdown.exportPdf', () => sendToActive({ type: 'command', cmd: 'exportPdf' })),
     vscode.commands.registerCommand('wysiwygMarkdown.gotoHeading', text => sendToActive({ type: 'gotoHeading', text: text }))
   ];
 

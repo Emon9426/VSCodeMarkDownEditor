@@ -9,4 +9,5 @@
 require('./webview.smoke.js');
 require('./markdown.test.js');
 require('./highlight.test.js');
+require('./bench.test.js');
 require('./webview.jsdom.test.js');

@@ -342,11 +342,11 @@
     ]));
     view.appendChild(group('主题与语言', [
       iconBtn('🎨<small>▾</small>', '主题：跟随 VS Code', 'noop'),
-      iconBtn('🌐<small>▾</small>', '界面语言：中文 / English（i18n · P1 交付）', 'noop')
+      iconBtn('🌐', '界面语言：中文 / English（点击切换）', 'cycleLang')
     ]));
     view.appendChild(group('导出', [
       iconBtn('🌐', '导出 HTML（自包含单文件，代码已高亮）', 'exportHtml'),
-      iconBtn('📄', '导出 PDF（P1 交付）', 'noop')
+      iconBtn('📄', T('exportPdfOpen') + '：生成打印页并在浏览器打开', 'exportPdf')
     ]));
     ribbon.appendChild(view);
     return ribbon;
@@ -383,14 +383,16 @@
       '<span class="seg grow"></span>',
       '<span class="seg clickable" id="sbWords">0 字</span>',
       '<span class="seg clickable" id="sbFont" title="正文字体（中英分设）">🅰 跟随 / 跟随</span>',
+      '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.4.0</span>'
+      '<span class="seg">Markdown Word v1.5.0</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
     $('#sbWords').onclick = () => toast('全文字数：' + $('#sbWords').textContent);
     $('#sbPage').onclick = e => showPagePanel(e.target);
+    $('#sbLang').onclick = () => cycleLanguage();
 
     // 浮层
     ttBar = document.createElement('div'); ttBar.id = 'ttBar';
@@ -432,9 +434,12 @@
     buildFindBar();
     buildFloatBar();
     buildCtxMenu();
+    buildAiMenu();
+    buildCrumb();
     bindFontDdls();
     buildTableGrid();
     bindEvents();
+    applyLanguage();
   }
 
   // ================= 表格网格选择器（UI-02①） =================
@@ -1156,7 +1161,11 @@
 
   // ================= 斜杠菜单（F08：Confluence 式） =================
   const SLASH_GROUPS = [
-    { name: '基础块', items: [
+    { name: 'AI', i18n: 'grpAI', items: [
+      ['✨', 'aiOutline', 'AI 生成本节大纲', '基于当前节标题与上下文', 'ai outline 大纲 dagang'],
+      ['✍', 'aiContinue', 'AI 续写', '从光标处继续写作', 'ai continue 续写 xuxie']
+    ]},
+    { name: '基础块', i18n: 'grpBasic', items: [
       ['H1', 'h1', '标题 1', '大标题 · 速记 # + 空格', 'h1 heading 标题'],
       ['H2', 'h2', '标题 2', '章节标题', 'h2 heading 标题'],
       ['H3', 'h3', '标题 3', '小节标题', 'h3 heading 标题'],
@@ -1165,12 +1174,12 @@
       ['――', 'hr', '分割线', '水平分隔线', 'hr 分割线 fengexian'],
       ['{ }', 'codeblock', '代码块', '30+ 语言（含 PL/SQL）· 等宽', 'code 代码块 daima']
     ]},
-    { name: '列表', items: [
+    { name: '列表', i18n: 'grpList', items: [
       ['•≡', 'ul', '无序列表', '项目符号列表', 'bullet 无序列表 ul liebiao'],
       ['1.≡', 'ol', '有序列表', '编号列表', 'numbered 有序列表 ol liebiao'],
       ['☑', 'task', '任务列表', '可勾选的待办', 'checkbox task 任务 renwu todo']
     ]},
-    { name: '媒体与插入', items: [
+    { name: '媒体与插入', i18n: 'grpMedia', items: [
       ['▦', 'table', '表格', '网格选择行列', 'table 表格 biaoge'],
       ['🖼', 'image', '图片', '本地 / 剪贴板 / URL', 'image 图片 tupian'],
       ['🔗', 'link', '链接', '插入超链接', 'link 链接 lianjie'],
@@ -1179,7 +1188,7 @@
       ['ℹ', 'panelInfo', '信息面板', '四色提示框（信息/提示/警告/错误）', 'panel 面板 mianban 提示'],
       ['📅', 'datetime', '日期时间', '插入当前日期时间', 'date 日期 datetime riqi']
     ]},
-    { name: 'Emoji', items: EMOJIS.slice(0, 16).map(e => [e[0], 'emoji:' + e[0], '插入 ' + e[0], e[1], e[1]]) }
+    { name: 'Emoji', i18n: '', items: EMOJIS.slice(0, 16).map(e => [e[0], 'emoji:' + e[0], '插入 ' + e[0], e[1], e[1]]) }
   ];
 
   let slashState = { open: false, kw: '', active: 0, items: [], anchor: null, anchorOff: 0 };
@@ -1199,7 +1208,6 @@
   function renderSlash() {
     const kw = slashState.kw.trim().toLowerCase();
     slashList.innerHTML = '';
-    // 评分排序：关键词是词条前缀（/表 → 表格）优于仅包含（/表 → 无序列表）
     const score = it => {
       if (!kw) { return 0; }
       const words = String(it[4]).toLowerCase() + ' ' + String(it[2]).toLowerCase();
@@ -1210,7 +1218,7 @@
       const hit = g.items.filter(it => !kw || it[4].indexOf(kw) !== -1 || it[2].toLowerCase().indexOf(kw) !== -1);
       if (!hit.length) { return; }
       hit.sort((a, b) => score(a) - score(b));
-      groups.push({ name: g.name, items: hit });
+      groups.push({ name: g.i18n ? T(g.i18n) : g.name, items: hit });
     });
     groups.sort((a, b) => (a.items[0] ? score(a.items[0]) : 9) - (b.items[0] ? score(b.items[0]) : 9));
     const items = [];
@@ -1220,7 +1228,7 @@
       g.items.forEach(it => {
         const li = document.createElement('li');
         li.className = 'sitem'; li.dataset.cmd = it[1];
-        li.innerHTML = '<span class="sic' + (String(it[1]).indexOf('emoji') === 0 ? ' ai' : '') + '">' + it[0] +
+        li.innerHTML = '<span class="sic' + (String(it[1]).indexOf('ai') === 0 ? ' ai' : '') + '">' + it[0] +
           '</span><div><div class="sit">' + it[2] + '</div><div class="sid">' + it[3] + '</div></div>';
         li.onclick = () => execSlashItem(it[1]);
         slashList.appendChild(li);
@@ -1509,7 +1517,8 @@
     [
       ['<b>B</b>', '加粗 Ctrl+B', 'bold'], ['<i>I</i>', '斜体 Ctrl+I', 'italic'],
       ['<s>S</s>', '删除线', 'strike'], ['<code>&lt;/&gt;</code>', '行内代码', 'incode'],
-      ['高', '高亮', 'highlight'], ['H2', '标题 2', 'h2'], ['🔗', '插入链接 Ctrl+K', 'link']
+      ['高', '高亮', 'highlight'], ['H2', '标题 2', 'h2'], ['🔗', '插入链接 Ctrl+K', 'link'],
+      ['✨', 'AI 助手（改写 / 润色 / 翻译…）', 'aiMenu']
     ].forEach(x => {
       const b = iconBtn(x[0], x[1], x[2]);
       bar.appendChild(b);
@@ -1517,7 +1526,9 @@
     bar.addEventListener('mousedown', e => e.preventDefault()); // 防夺选区
     bar.addEventListener('click', e => {
       const b = e.target.closest('.rbtn');
-      if (b && b.dataset.cmd) { runCommand(b.dataset.cmd); updateFloatBar(); }
+      if (!b || !b.dataset.cmd) { return; }
+      if (b.dataset.cmd === 'aiMenu') { showAiMenu(b); return; }
+      runCommand(b.dataset.cmd); updateFloatBar();
     });
     $('#app').appendChild(bar);
   }
@@ -1529,7 +1540,9 @@
     const hasSel = sel && sel.rangeCount && !sel.isCollapsed && editor.contains(sel.anchorNode) && !sel.getRangeAt(0).collapsed;
     const inTable = caretContext().inTable;
     if (!hasSel || inTable) { bar.style.display = 'none'; return; } // 表格内优先表格工具条
-    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    const rg = sel.getRangeAt(0);
+    if (typeof rg.getBoundingClientRect !== 'function') { return; } // 环境无几何 API（如 jsdom）
+    const rect = rg.getBoundingClientRect();
     if (!rect || (!rect.width && !rect.height)) { bar.style.display = 'none'; return; }
     bar.style.display = 'flex';
     bar.style.left = Math.max(8, rect.left + rect.width / 2 - 130) + 'px';
@@ -1565,6 +1578,18 @@
     const key = kind === 'cjk' ? 'fontFamilyCJK' : 'fontFamilyLatin';
     const cur = (settings.editor || {})[key] || '';
     const panel = document.createElement('div'); panel.id = 'fontPanel';
+    // 有选区时提供"应用于选中文字"（行内 span 持久化，随文档保存）
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && editor.contains(sel.anchorNode)) {
+      const applyBtn = document.createElement('div');
+      applyBtn.className = 'fitem apply-sel';
+      applyBtn.textContent = lang === 'zh' ? '✎ 应用于选中文字（随文档保存）' : '✎ Apply to selection (persisted)';
+      applyBtn.style.borderTop = '1px solid rgba(127,127,127,.2)';
+      applyBtn.onclick = () => { applyFontToSelection(); hideFontPanel(); };
+      panel.appendChild(applyBtn);
+      const sep = document.createElement('div'); sep.className = 'fsep2'; sep.style.cssText = 'height:1px;background:rgba(127,127,127,.2);margin:4px 0';
+      panel.appendChild(sep);
+    }
     list.forEach(function (kv) {
       const item = document.createElement('div');
       item.className = 'fitem' + (kv[0] === cur ? ' on' : '');
@@ -1702,6 +1727,289 @@
     placeCaret(target, true);
   }
 
+  // ================= F14 i18n（界面中英文，v1.3 需求） =================
+  const STR = {
+    'zh': {
+      saved: '✓ 已保存', saving: '保存中…', pending: '未保存',
+      cancel: '取消', ok: '确定', insert: '插入', apply: '应用', accept: '✅ 接受替换',
+      retry: '🔄 重试', append: '✏️ 追加指令…', discard: '✕ 放弃',
+      find: '查找（支持正则）', replaceWith: '替换为', replace: '替换', replaceAllT: '全部',
+      aiMenuTitle: '✨ AI 助手', aiDiffTitle: '✨ AI 结果预览', aiStreaming: '生成中…',
+      aiAccept: '✅ 接受', aiLogin: '未检测到 GitHub Copilot 登录（或 LM API 不可用）。请在 VS Code 中登录 Copilot 后重试。',
+      aiDisabled: 'AI 已在设置中关闭（markdownWord.ai.enabled）',
+      words: '字', page: '📄', grpBasic: '基础块', grpList: '列表', grpMedia: '媒体与插入', grpAI: '✨ AI 助手（Copilot）',
+      ctxCut: '剪切', ctxCopy: '复制', ctxPaste: '粘贴（Ctrl+V）', ctxCopyMd: '复制为 Markdown 源码',
+      ctxLink: '插入链接', ctxFn: '插入脚注', ctxFind: '查找替换 (Ctrl+H)',
+      fnSaved: '脚注 {n} 已插入，定义已追加到文末', copied: '已复制 Markdown 源码',
+      tocEmpty: '文档中尚无标题，无法生成目录', tocDone: '已按标题生成目录（{n} 项）',
+      pdfHint: '已生成打印就绪页面并在浏览器打开：按 Ctrl+P → 目标选择“另存为 PDF”',
+      langName: '中文', exportPdfOpen: '导出 PDF（打印）'
+    },
+    'en': {
+      saved: '✓ Saved', saving: 'Saving…', pending: 'Unsaved',
+      cancel: 'Cancel', ok: 'OK', insert: 'Insert', apply: 'Apply', accept: '✅ Accept',
+      retry: '🔄 Retry', append: '✏️ Follow-up…', discard: '✕ Discard',
+      find: 'Find (regex supported)', replaceWith: 'Replace with', replace: 'Replace', replaceAllT: 'All',
+      aiMenuTitle: '✨ AI Assistant', aiDiffTitle: '✨ AI Preview', aiStreaming: 'Generating…',
+      aiAccept: '✅ Accept', aiLogin: 'GitHub Copilot not signed in (or LM API unavailable). Sign in to Copilot in VS Code and retry.',
+      aiDisabled: 'AI is disabled in settings (markdownWord.ai.enabled)',
+      words: 'words', page: '📄', grpBasic: 'Basic blocks', grpList: 'Lists', grpMedia: 'Media & Insert', grpAI: '✨ AI (Copilot)',
+      ctxCut: 'Cut', ctxCopy: 'Copy', ctxPaste: 'Paste (Ctrl+V)', ctxCopyMd: 'Copy as Markdown source',
+      ctxLink: 'Insert link', ctxFn: 'Insert footnote', ctxFind: 'Find & Replace (Ctrl+H)',
+      fnSaved: 'Footnote {n} inserted, definition appended at end', copied: 'Markdown copied',
+      tocEmpty: 'No headings found to build TOC', tocDone: 'TOC generated ({n} items)',
+      pdfHint: 'Print-ready page opened in browser: press Ctrl+P → “Save as PDF”',
+      langName: 'English', exportPdfOpen: 'Export PDF (print)'
+    }
+  };
+  let lang = 'zh';
+  function T(key) {
+    const t = STR[lang] || STR.zh;
+    return t[key] !== undefined ? t[key] : (STR.zh[key] !== undefined ? STR.zh[key] : key);
+  }
+  function applyLanguage() {
+    const pref = (settings.ui && settings.ui.language) || 'auto';
+    if (pref === 'zh-CN') { lang = 'zh'; }
+    else if (pref === 'en') { lang = 'en'; }
+    else { lang = ((navigator.language || 'zh').toLowerCase().indexOf('en') === 0) ? 'en' : 'zh'; }
+    $('#sbLang') && ($('#sbLang').textContent = '🌐 ' + T('langName'));
+  }
+  function cycleLanguage() {
+    const next = lang === 'zh' ? 'en' : 'zh-CN';
+    settings.ui = settings.ui || {};
+    settings.ui.language = next;
+    applyLanguage();
+    vscode.postMessage({ type: 'saveSetting', section: 'ui', key: 'language', value: next });
+    toast('UI language: ' + T('langName'));
+  }
+
+  // ================= F15 AI 助手（GitHub Copilot · 宿主转发） =================
+  let aiState = { id: 0, open: false, cmd: '', origText: '', result: '', range: null, mode: '', busy: false, instruction: '' };
+  function aiAvailable() { return settings.ai ? settings.ai.enabled !== false : true; }
+  function aiRequest(cmd, text, instruction) {
+    const id = 'ai' + (++aiState.id);
+    aiState = { id: id, open: true, cmd: cmd, origText: text || '', result: '', range: null, mode: cmd === 'outline' || cmd === 'continue' ? 'insert' : 'replace', busy: true, instruction: instruction || '' };
+    openAiCard();
+    vscode.postMessage({ type: 'ai', id: id, cmd: cmd, text: text || '', instruction: instruction || '' });
+  }
+  function openAiCard() {
+    let card = $('#aiCard');
+    if (!card) {
+      card = document.createElement('div'); card.id = 'aiCard';
+      card.innerHTML = [
+        '<div class="ai-h"><span class="ai-title"></span><span class="ai-meta"></span><span style="flex:1"></span><span class="ai-stop" title="关闭">✕</span></div>',
+        '<div class="ai-body"><div class="ai-orig"></div><div class="ai-result"></div></div>',
+        '<div class="ai-foot">',
+        '<input class="ai-instr" placeholder="自定义指令（回车发送 / 追加要求）">',
+        '<button class="btn ai-act" data-a="discard"></button>',
+        '<button class="btn ai-act" data-a="append"></button>',
+        '<button class="btn ai-act" data-a="retry"></button>',
+        '<button class="btn pri ai-act" data-a="accept"></button>',
+        '</div>'
+      ].join('');
+      $('#app').appendChild(card);
+      card.querySelector('.ai-stop').onclick = () => { card.style.display = 'none'; aiState.open = false; };
+      card.querySelectorAll('.ai-act').forEach(b => {
+        b.onclick = () => {
+          const a = b.dataset.a;
+          if (a === 'discard') { card.style.display = 'none'; aiState.open = false; return; }
+          if (a === 'retry') { return aiRequest(aiState.cmd, aiState.origText, aiState.instruction); }
+          if (a === 'append') {
+            const v = card.querySelector('.ai-instr').value.trim();
+            if (!v) { return; }
+            return aiRequest('custom', aiState.origText, aiState.instruction ? aiState.instruction + '；' + v : v);
+          }
+          if (a === 'accept') { acceptAi(); }
+        };
+      });
+      card.querySelector('.ai-instr').addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const v = e.target.value.trim();
+          if (v) { aiRequest('custom', aiState.origText, aiState.instruction ? aiState.instruction + '；' + v : v); }
+        }
+      });
+      card.addEventListener('mousedown', e => { if (!e.target.closest('input,button')) { e.preventDefault(); } });
+    }
+    card.style.display = 'block';
+    card.querySelector('.ai-title').textContent = T('aiDiffTitle');
+    card.querySelector('.ai-meta').textContent = T('aiStreaming');
+    card.querySelector('.ai-orig').textContent = aiState.origText || '';
+    card.querySelector('.ai-result').textContent = '';
+    card.querySelector('.ai-instr').value = aiState.instruction || '';
+    const btns = card.querySelectorAll('.ai-act');
+    btns.forEach(b => { b.disabled = true; });
+    btns[0].textContent = T('discard'); btns[1].textContent = T('append'); btns[2].textContent = T('retry'); btns[3].textContent = T('aiAccept');
+  }
+  function paintAiChunk() {
+    const card = $('#aiCard');
+    if (!card) { return; }
+    card.querySelector('.ai-result').textContent = aiState.result;
+    card.querySelector('.ai-body').scrollTop = 1e6;
+  }
+  function acceptAi() {
+    const card = $('#aiCard');
+    card.style.display = 'none';
+    aiState.open = false;
+    if (aiState.mode === 'insert') {
+      // outline / continue：直接插入结果（大纲逐行 ### 解析为块）
+      const lines = aiState.result.trim().split('\n').filter(l => l.trim());
+      if (aiState.cmd === 'outline') {
+        const frag = MD.blocksToDom(MD.parse(lines.join('\n')));
+        insertNodesAtCaret(frag);
+      } else {
+        const frag = MD.blocksToDom(MD.parse(aiState.result.trim()));
+        insertNodesAtCaret(frag);
+      }
+      scheduleSave();
+      return;
+    }
+    // replace：替换保存的选区 range
+    const r = aiState.range;
+    if (r) {
+      try {
+        r.deleteContents();
+        const frag = MD.blocksToDom(MD.parse(aiState.result.trim()));
+        const nodes = [];
+        Array.prototype.forEach.call(frag.childNodes, n => nodes.push(n));
+        nodes.forEach(n => r.insertNode(n));
+      } catch (e) {
+        insertNodesAtCaret(MD.blocksToDom(MD.parse(aiState.result.trim())));
+      }
+      scheduleSave();
+    }
+  }
+  function aiSelectionAction(cmd) {
+    if (!aiAvailable()) { toast(T('aiDisabled')); return; }
+    if (cmd === 'custom') {
+      const v = prompt2(T('aiMenuTitle'), 'instruction');
+      return v.then ? v.then(x => { if (x && x.instruction) { startSelAi('custom', x.instruction); } }) : null;
+    }
+    startSelAi(cmd, '');
+  }
+  function startSelAi(cmd, instruction) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount || sel.isCollapsed) { toast(lang === 'zh' ? '请先选中要处理的文字' : 'Select text first'); return; }
+    const r = sel.getRangeAt(0).cloneRange();
+    const text = sel.toString();
+    aiRequest(cmd, text, instruction);
+    aiState.range = r; // aiRequest 内部会重建 aiState，选区在请求发出后挂回
+  }
+  function prompt2(title, field) {
+    return dialog(title, '<div class="frow"><label>' + (lang === 'zh' ? '指令' : 'Instruction') + '</label><input data-field="' + field + '" placeholder="' + (lang === 'zh' ? '如：更正式一点' : 'e.g. more formal') + '"></div>', [
+      { text: T('cancel'), closeOnly: true },
+      { text: T('ok'), primary: true, validate: v => !!(v && v[field] && v[field].trim()) }
+    ]).then(v => v);
+  }
+  function buildAiMenu() {
+    const bar = document.createElement('div'); bar.id = 'aiMenu';
+    [['rewrite', lang === 'zh' ? '✨ 改写' : '✨ Rewrite'],
+     ['polish', lang === 'zh' ? '润色' : 'Polish'],
+     ['expand', lang === 'zh' ? '扩写' : 'Expand'],
+     ['shorten', lang === 'zh' ? '缩写' : 'Shorten'],
+     ['translate_zh', lang === 'zh' ? '译为中文' : '→ 中文'],
+     ['translate_en', lang === 'zh' ? '译为英文' : '→ English'],
+     ['fix', lang === 'zh' ? '修正错别字' : 'Fix typos'],
+     ['custom', lang === 'zh' ? '自定义指令…' : 'Custom…']
+    ].forEach(function (kv) {
+      const d = document.createElement('div'); d.className = 'ctx-item'; d.dataset.ai = kv[0];
+      d.textContent = kv[1];
+      d.onclick = () => { bar.style.display = 'none'; aiSelectionAction(kv[0]); };
+      bar.appendChild(d);
+    });
+    bar.addEventListener('mousedown', e => e.preventDefault());
+    $('#app').appendChild(bar);
+    document.addEventListener('mousedown', e => {
+      if (bar.style.display === 'block' && !bar.contains(e.target)) { bar.style.display = 'none'; }
+    });
+  }
+  function showAiMenu(anchor) {
+    if (!aiAvailable()) { toast(T('aiDisabled')); return; }
+    const bar = $('#aiMenu');
+    bar.style.display = 'block';
+    const r = anchor.getBoundingClientRect();
+    bar.style.left = Math.min(r.left, window.innerWidth - 220) + 'px';
+    bar.style.top = (r.bottom + 6) + 'px';
+  }
+
+  // ================= F14 面包屑（标题路径） =================
+  function buildCrumb() {
+    const c = document.createElement('div'); c.id = 'crumb';
+    $('#editorWrap').insertBefore(c, $('#editor'));
+  }
+  function updateCrumb() {
+    const c = $('#crumb');
+    if (!c) { return; }
+    if (mode !== 'wysiwyg') { c.style.display = 'none'; return; }
+    c.style.display = 'flex';
+    // 当前块之前（含所在标题）的标题链：遍历块维护层级栈，到达当前块时栈即路径
+    const cur = topBlock();
+    const stack = [];
+    const kids = editor.children || [];
+    for (let k = 0; k < kids.length; k++) {
+      const el = kids[k];
+      if (el.tagName && /^H[1-6]$/.test(el.tagName)) {
+        const lv = +el.tagName[1];
+        while (stack.length && stack[stack.length - 1].level >= lv) { stack.pop(); }
+        stack.push({ level: lv, el: el });
+      }
+      if (el === cur) { break; }
+    }
+    if (!stack.length) {
+      const h1 = $('#editor h1');
+      c.innerHTML = h1 ? '<span class="crumb-item">' + MD.escapeHtml(h1.textContent.trim()) + '</span>' : '';
+      return;
+    }
+    c.innerHTML = '';
+    stack.forEach((it, i) => {
+      if (i) { const sep = document.createElement('span'); sep.className = 'crumb-sep'; sep.textContent = '›'; c.appendChild(sep); }
+      const item = document.createElement('span'); item.className = 'crumb-item'; item.textContent = it.el.textContent.trim();
+      item.onclick = () => { placeCaret(it.el, true); try { it.el.scrollIntoView({ block: 'center' }); } catch (e) { /* */ } };
+      c.appendChild(item);
+    });
+  }
+
+  // ================= F13 PDF：打印就绪 HTML + 外部浏览器 =================
+  function exportPdf() {
+    const bodyHtml = MD.blocksToHtml(MD.parse(currentText()));
+    const html = [
+      '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">',
+      '<title>' + MD.escapeHtml((settings.docName || 'document') + '.pdf') + '</title>',
+      '<style>@page{margin:18mm 16mm}body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#111;line-height:1.7;font-size:12pt}',
+      'h1{border-bottom:1px solid #ccc;padding-bottom:6px}pre{background:#f6f8fa;padding:10px;border-radius:6px;overflow-x:hidden;white-space:pre-wrap}code{font-family:Consolas,monospace;font-size:.9em}',
+      'table{border-collapse:collapse}th,td{border:1px solid #999;padding:5px 10px}th{background:#f2f2f2}',
+      'blockquote{border-left:3px solid #888;margin:10px 0;padding:4px 12px;color:#444}img{max-width:100%}',
+      '.hljs-kw{color:#7c3aed}.hljs-str{color:#15803d}.hljs-num{color:#c2410c}.hljs-cm{color:#888;font-style:italic}.hljs-type{color:#1d4ed8}',
+      '</style></head><body>', bodyHtml, '</body></html>'
+    ].join('\n');
+    vscode.postMessage({ type: 'saveFile', name: (settings.docName || 'document') + '.print.html', content: html });
+    setTimeout(() => {
+      vscode.postMessage({ type: 'openExternal', name: (settings.docName || 'document') + '.print.html' });
+      toast(T('pdfHint'));
+    }, 600);
+  }
+
+  // ================= F02 选区级字体（行内 span 持久化） =================
+  function applyFontToSelection() {
+    const sel = window.getSelection();
+    if (!sel.rangeCount || sel.isCollapsed) { return false; }
+    const e = settings.editor || {};
+    const stack = [e.fontFamilyLatin, e.fontFamilyCJK].filter(Boolean).map(f => '"' + f + '"');
+    if (!stack.length) { toast(lang === 'zh' ? '请先选择字体' : 'Choose a font first'); return false; }
+    const span = document.createElement('span');
+    span.setAttribute('style', 'font-family:' + stack.join(', '));
+    try { sel.getRangeAt(0).surroundContents(span); }
+    catch (err) {
+      const r = sel.getRangeAt(0);
+      const frag = r.extractContents();
+      span.appendChild(frag);
+      r.insertNode(span);
+    }
+    scheduleSave();
+    toast(lang === 'zh' ? '字体已应用于选中文字（随文档保存）' : 'Font applied to selection (persisted)');
+    return true;
+  }
+
   // ================= 命令分发 =================
   function runCommand(cmd) {
     editor.focus();
@@ -1742,15 +2050,35 @@
       case 'zoomIn': zoomFont(1); break;
       case 'zoomOut': zoomFont(-1); break;
       case 'pageSetup': showPagePanel($('.rbtn[data-cmd="pageSetup"]') || editorWrap); break;
+      case 'cycleLang': cycleLanguage(); break;
       case 'find': openFind(false); break;
       case 'replace': openFind(true); break;
       case 'exportHtml': exportHtml(); break;
+      case 'exportPdf': exportPdf(); break;
       case 'toc': case 'insertTOC': insertTOC(); break;
       case 'panelInfo': insertPanel('info'); break;
       case 'panelTip': insertPanel('tip'); break;
       case 'panelWarning': insertPanel('warning'); break;
       case 'panelError': insertPanel('error'); break;
       case 'footnote': case 'insertFootnote': insertFootnote(); break;
+      case 'aiOutline': {
+        hideSlashMenu();
+        if (!aiAvailable()) { toast(T('aiDisabled')); break; }
+        const b = topBlock();
+        const ctxText = b ? (b.tagName === 'H1' || b.tagName === 'H2' || b.tagName === 'H3' ? b.textContent : '') : '';
+        const prevHead = $$('#editor h1,#editor h2,#editor h3').map(h => h.textContent).join(' > ');
+        aiState.range = null;
+        aiRequest('outline', (ctxText ? '本节标题：' + ctxText + '\n' : '') + '文档标题脉络：' + (prevHead || '（空）') + '\n\n本节现有正文：' + (b ? b.textContent.slice(0, 500) : ''), '');
+        break;
+      }
+      case 'aiContinue': {
+        hideSlashMenu();
+        if (!aiAvailable()) { toast(T('aiDisabled')); break; }
+        const b = topBlock();
+        aiState.range = null;
+        aiRequest('continue', (b ? b.textContent : '') || '', '');
+        break;
+      }
       case 'undo': execSimple('undo'); break;
       case 'redo': execSimple('redo'); break;
       case 'toggleMode': setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg'); break;
@@ -2024,10 +2352,43 @@
       e.preventDefault();
       const tmp = document.createElement('div');
       tmp.innerHTML = html;
-      // 简单清洗：去脚本样式与内联样式，去 data: 内嵌图
+      // 智能粘贴增强（F11）：识别 Word 的 mso-list 段落并还原为列表
+      tmp.querySelectorAll('p[style*="mso-list"]').forEach(p => {
+        const lm = /mso-list:\s*l(\d+)(?:\s+level(\d+))?/.exec(p.getAttribute('style') || '');
+        if (!lm) { return; }
+        const level = Math.max(1, Math.min(3, parseInt(lm[2] || '1', 10)));
+        const li = document.createElement('li');
+        li.innerHTML = p.innerHTML;
+        li.setAttribute('data-mdw-level', String(level));
+        const ul = document.createElement('ul');
+        ul.appendChild(li);
+        p.replaceWith(ul);
+      });
+      // 清洗：去脚本样式与内联样式，去 data: 内嵌图
       tmp.querySelectorAll('script,style,meta,link').forEach(n => n.remove());
+      // 合并连续的 Word 列表 ul 为嵌套结构（按 data-mdw-level）
+      let listRoot = null; let listStack = [];
+      Array.prototype.slice.call(tmp.children).forEach(el => {
+        const li = el.tagName === 'UL' ? el.querySelector('li[data-mdw-level]') : null;
+        if (!li) { listRoot = null; listStack = []; return; }
+        const lvl = Math.max(1, +li.getAttribute('data-mdw-level') || 1);
+        if (!listRoot) { listRoot = el; listStack = [{ lvl: 1, ul: el }]; li.removeAttribute('data-mdw-level'); return; }
+        while (listStack.length > 1 && listStack[listStack.length - 1].lvl >= lvl) { listStack.pop(); }
+        const top = listStack[listStack.length - 1];
+        li.removeAttribute('data-mdw-level');
+        if (lvl > top.lvl) {
+          const sub = document.createElement('ul');
+          (top.ul.lastElementChild || top.ul).appendChild(sub);
+          sub.appendChild(li);
+          listStack.push({ lvl: lvl, ul: sub });
+        } else {
+          top.ul.appendChild(li);
+        }
+        el.remove();
+      });
       tmp.querySelectorAll('*').forEach(n => {
         n.removeAttribute('style'); n.removeAttribute('class'); n.removeAttribute('id');
+        n.removeAttribute('data-mdw-level');
         if (n.tagName === 'IMG' && /^data:/.test(n.getAttribute('src') || '')) { n.replaceWith(document.createTextNode('[图片]')); }
       });
       const blocks = MD.domToBlocks(tmp);
@@ -2178,7 +2539,7 @@
     });
     editor.addEventListener('keyup', updateStatus);
     document.addEventListener('selectionchange', () => {
-      if (mode === 'wysiwyg') { updateTableBar(); updateFloatBar(); }
+      if (mode === 'wysiwyg') { updateTableBar(); updateFloatBar(); updateCrumb(); }
     });
     // 源码 / 分屏
     srcTextarea.addEventListener('input', () => {
@@ -2212,6 +2573,7 @@
         settings = Object.assign(settings, msg.settings || {});
         if (!settings.page) { settings.page = { size: 'fit', customWidth: 794, background: 'auto', pattern: 'none' }; }
         if (!settings.editor) { settings.editor = {}; }
+        applyLanguage();
         applyPageSettings();
         applyFontVars();
         loadMarkdown(msg.text || '');
@@ -2242,6 +2604,30 @@
       case 'imageSaved': onImageSaved(msg); break;
       case 'imageMap': applyImageMap(msg.map || {}); break;
       case 'gotoHeading': gotoHeading(msg.text); break;
+      case 'aiChunk':
+        if (msg.id === aiState.id) { aiState.result += msg.delta || ''; paintAiChunk(); }
+        break;
+      case 'aiDone':
+        if (msg.id === aiState.id) {
+          aiState.busy = false;
+          const card = $('#aiCard');
+          if (card) {
+            card.querySelector('.ai-meta').textContent = aiState.result.length + ' chars';
+            card.querySelectorAll('.ai-act').forEach(b => { b.disabled = false; });
+          }
+          if (msg.empty) { card.style.display = 'none'; toast('AI 未返回内容'); }
+        }
+        break;
+      case 'aiError':
+        if (msg.id === aiState.id) {
+          aiState.busy = false;
+          const card = $('#aiCard');
+          if (card) { card.style.display = 'none'; }
+          if (msg.error === 'no-model' || msg.error === 'no-lm') { toast(T('aiLogin')); }
+          else if (msg.error === 'disabled') { toast(T('aiDisabled')); }
+          else { toast('AI 出错：' + msg.error); }
+        }
+        break;
       case 'command':
         if (msg.cmd === 'insertTable') { showTablePicker(editorWrap); }
         else if (msg.cmd === 'insertImage') { openImageDialog(); }
