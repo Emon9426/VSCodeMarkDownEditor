@@ -274,5 +274,49 @@ test('公式定界符连环：$$ 混排不崩溃且可解析', () => {
   assert.ok(win.MdCore.roundtrip('$$a$$\n').indexOf('$$a$$') !== -1);
 });
 
+console.log('== ④ 占位按钮清零 + 新命令冒烟（v1.7.1：用户曾误点"后续版本交付"占位） ==');
+
+test('静态：Ribbon 无 noop 占位按钮、无"后续版本交付"文案', () => {
+  assert.ok(mainCode.indexOf("'noop'") === -1, '不应再有 noop 命令按钮');
+  assert.ok(mainCode.indexOf('后续版本交付') === -1, '不应再有"后续版本交付"提示');
+  assert.ok(mainCode.indexOf('P1 交付') === -1 && mainCode.indexOf('P1 后续版本') === -1, 'tooltip 不应再标注 P1/后续版本');
+});
+
+test('冒烟：插入公式/流程图按钮产出可序列化块', () => {
+  const dom = boot(1280, 800);
+  const win = dom.window, doc = win.document;
+  const q = s => doc.querySelector(s);
+  const qa = s => Array.prototype.slice.call(doc.querySelectorAll(s));
+  const click = el => el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+  win.__onMessage({ data: { type: 'init', text: '# 文档\n\n段落。\n', settings: { ui: { language: 'zh-CN' } } } });
+  const p = qa('#editor > p')[0];
+  const r = doc.createRange(); r.selectNodeContents(p); r.collapse(false);
+  const s = win.getSelection(); s.removeAllRanges(); s.addRange(r);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  click(qa('#rp-ins .rbtn[data-cmd="math"]')[0] || qa('.rbtn[data-cmd="math"]')[0]);
+  assert.ok(q('#editor .md-math[data-tex]'), '公式块已插入');
+  const tex = q('#editor .md-math').getAttribute('data-tex');
+  const md = win.MdCore.domToMarkdown(q('#editor'));
+  assert.ok(md.indexOf('$$' + tex + '$$') !== -1, '序列化保留 $$..$$：' + md.slice(0, 80));
+  click(qa('.rbtn[data-cmd="mermaid"]')[0]);
+  assert.ok(q('#editor .md-mermaid[data-code]'), 'Mermaid 块已插入');
+  assert.ok(win.MdCore.domToMarkdown(q('#editor')).indexOf('```mermaid') !== -1, '序列化保留 mermaid 代码块');
+});
+
+test('冒烟：查找按钮打开查找条、大纲按钮请求聚焦侧栏', () => {
+  const dom = boot(1280, 800);
+  const win = dom.window, doc = win.document;
+  const q = s => doc.querySelector(s);
+  const qa = s => Array.prototype.slice.call(doc.querySelectorAll(s));
+  const click = el => el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+  win.__onMessage({ data: { type: 'init', text: '正文。\n', settings: { ui: { language: 'zh-CN' } } } });
+  click(qa('.rbtn[data-cmd="find"]')[0]);
+  assert.ok(q('#findBar') && q('#findBar').style.display !== 'none', '查找条打开');
+  win.__posted.length = 0;
+  click(qa('.rbtn[data-cmd="outline"]')[0]);
+  const fwd = win.__posted.filter(m => m.type === 'showOutline');
+  assert.strictEqual(fwd.length, 1, 'showOutline 已转发宿主');
+});
+
 console.log('\n结果: ' + passed + ' 通过, ' + failed + ' 失败');
 if (failed) { process.exitCode = 1; }

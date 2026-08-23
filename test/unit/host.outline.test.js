@@ -48,7 +48,13 @@ function stubVscodeFactory() {
       }),
       applyEdit: async () => true,
       onDidChangeTextDocument: () => new Disposable(),
-      fs: { writeFile: async () => undefined, readFile: async () => Buffer.from(''), createDirectory: async () => undefined, stat: async () => ({ type: 1 }) }
+      fs: {
+        written: {},
+        writeFile: async (uri, buf) => { api.workspace.fs.written[uri.path] = buf; },
+        readFile: async () => Buffer.from(''),
+        createDirectory: async () => undefined,
+        stat: async uri => { if (api.workspace.fs.written[uri.path]) { return { type: 1 }; } throw new Error('FileNotFound'); }
+      }
     },
     env: { openExternal: async () => undefined }
   };
@@ -67,11 +73,23 @@ const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' +
   '</body></html>';
 const dom = new JSDOM(html, { runScripts: 'dangerously' });
 dom.window.__pathStub = path;
+dom.window.Buffer = Buffer; // 扩展宿主是 Node 环境，jsdom window 缺 Buffer 全局（saveImage/drawio 模板用到）
 const vscode = dom.window.vscode;
 const ext = dom.window.module.exports;
 
 const results = [];
-function test(name, fn) { try { fn(); results.push('✓ ' + name); console.log('✓ ' + name); } catch (e) { results.push('✗ ' + name + ' — ' + e.message); console.log('✗ ' + name + ' — ' + e.message); process.exitCode = 1; } }
+const pending = [];
+function record(name, e) {
+  if (e) { results.push('✗ ' + name + ' — ' + e.message); console.log('✗ ' + name + ' — ' + e.message); process.exitCode = 1; }
+  else { results.push('✓ ' + name); console.log('✓ ' + name); }
+}
+function test(name, fn) {
+  try {
+    const r = fn();
+    if (r && typeof r.then === 'function') { pending.push(r.then(() => record(name, null), e => record(name, e))); return; }
+    record(name, null);
+  } catch (e) { record(name, e); }
+}
 
 // ---- 测试 ----
 const context = { subscriptions: [], extensionUri: { scheme: 'file', path: '/ext' }, asAbsolutePath: p => p };
@@ -175,4 +193,35 @@ test('面板销毁 → activeWebview 清空（无面板时命令给提示不静�
   assert.ok(warned, '无激活面板时给出提示而非静默');
 });
 
-console.log('宿主大纲链路: ' + (process.exitCode ? '存在失败' : '全部通过'));
+test('insertDrawio：创建 .drawio.svg 模板并回传引用（v1.7.1）', async () => {
+  const provider = vscode._calls.providers[0].provider;
+  const mk = makePanel('# 文档\n');
+  provider.resolveCustomTextEditor(mk.doc, mk.panel, {});
+  listeners[0]({ type: 'insertDrawio' });
+  await new Promise(r => setTimeout(r, 20)); // 异步完成
+  const msg = posted.find(m => m.type === 'drawioInserted');
+  assert.ok(msg && !msg.error, '回传 drawioInserted');
+  assert.ok(/diagrams\/diagram-\d+\.drawio\.svg$/.test(msg.rel), '相对路径正确: ' + msg.rel);
+  assert.ok(/^webview:\/\//.test(msg.src), 'webviewUri 回传');
+  const written = Object.keys(vscode.workspace.fs.written);
+  assert.strictEqual(written.length, 1, '写入一个文件');
+  const content = String(vscode.workspace.fs.written[written[0]]);
+  assert.ok(content.indexOf('<svg') === 0 && content.indexOf('mxGraphModel') !== -1, 'SVG 内嵌 mxGraphModel（vscode-drawio 可编辑）');
+});
+
+test('showOutline：转发执行 workbench.viewExtension.markdownWord 聚焦大纲侧栏', async () => {
+  const provider = vscode._calls.providers[0].provider;
+  const mk = makePanel('# 文档\n');
+  provider.resolveCustomTextEditor(mk.doc, mk.panel, {});
+  const executed = [];
+  const orig = vscode.commands.executeCommand;
+  vscode.commands.executeCommand = async cmd => { executed.push(cmd); };
+  listeners[0]({ type: 'showOutline' });
+  await new Promise(r => setTimeout(r, 10));
+  vscode.commands.executeCommand = orig;
+  assert.ok(executed.indexOf('workbench.viewExtension.markdownWord') !== -1, '聚焦 Markdown Word 容器');
+});
+
+Promise.all(pending).then(() => {
+  console.log('宿主链路: ' + (process.exitCode ? '存在失败' : '全部通过'));
+});

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.1（2026-08-23）
+
+修复用户报障：**"进入大纲视图，依旧显示该功能将在后续版本中交付"**——根因不是大纲功能缺失，而是 **Ribbon 工具栏残留 9 个早期开发阶段的 `noop` 占位按钮**：其上功能（查找/替换/公式/Mermaid/Draw.io/脚注/大纲面板）绝大多数早已在 v1.3~v1.7.0 实现，但占位按钮从未清理，点击弹"该功能在后续版本交付"，严重误导（用户点 Ribbon「视图」页签的"大纲面板（P1 交付）"按钮即见此提示）。**占位按钮全部清零**：
+
+- **接线既有功能**：查找/替换 → 查找条（Ctrl+F/H 已有）；脚注 → insertFootnote（v1.4 已有）；「视图」页签"大纲面板" → **聚焦活动栏大纲侧栏**（`workbench.viewExtension.markdownWord`）
+- **新增插入命令**：**公式**按钮 → 插入 `$$..$$` 块并立即弹 LaTeX 编辑对话框；**Mermaid** 按钮 → 插入 graph TD 模板（自动渲染 SVG）并弹源码编辑对话框；**Draw.io** 按钮 → 宿主在 `diagrams/` 创建 `.drawio.svg` 模板（SVG 内嵌 mxGraphModel，vscode-drawio 可直接编辑）并插入图片引用——补齐了此前只能"双击已有块编辑"、无法从 Ribbon 新建公式/图表的缺口
+- **删除假按钮**：字数统计（状态栏已常驻）、主题选择（自动跟随 VS Code）、"更多格式"（上标/下标/清除格式尚未实现，待真正实现再加，不再放占位）
+- i18n：新增 editMath/editMermaid/drawioCreated/drawioFailed/openOutline 双语键
+- 测试 201 项全过（+5：Ribbon 无 noop/无"后续版本交付"静态守卫、公式/Mermaid 插入冒烟+序列化、查找/大纲按钮冒烟、宿主 insertDrawio 建模板链路、showOutline 聚焦转发）；jsdom window 需注入 Buffer（宿主 Node 有、jsdom 无，saveImage 同样依赖）
+
 ## 1.7.0（2026-08-23）
 
 大纲视图可见性升级：用户报告"大纲视图还没有实现"——排查确认**功能链路完整**（新增宿主侧 stub 测试 7 项：activate 注册 / ready→init / outline 建树 / 树项 / 点击跳转转发 / 生命周期），根因是**入口不可见**：视图原挂在资源管理器侧栏底部，默认处于折叠区且无图标，极易被忽略。

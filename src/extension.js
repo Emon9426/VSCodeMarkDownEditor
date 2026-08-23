@@ -228,6 +228,17 @@ class MarkdownWordEditorProvider {
           if (this.outlineProvider) { this.outlineProvider.update(msg.items || []); }
           break;
         }
+        case 'showOutline': {
+          // 聚焦活动栏的 Markdown Word 大纲视图（容器 id: markdownWord）
+          vscode.commands.executeCommand('workbench.viewExtension.markdownWord').then(undefined, () => {});
+          break;
+        }
+        case 'insertDrawio': {
+          this.insertDrawioTemplate(document, webview).catch(err => {
+            webview.postMessage({ type: 'drawioInserted', error: String(err && err.message || err) });
+          });
+          break;
+        }
         case 'openNative': {
           // 在 VS Code 原生编辑器中并排打开（语法高亮 / 行号 / 多光标），保留本编辑器便于切回
           vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.Beside, preview: false })
@@ -312,6 +323,31 @@ class MarkdownWordEditorProvider {
       id: msg.id,
       relPath: relPath,
       webSrc: webview.asWebviewUri(fileUri).toString()
+    });
+  }
+
+  /** F10 Draw.io：在 diagrams/ 下创建 .drawio.svg 模板（SVG 内嵌 mxGraphModel，vscode-drawio 可直接编辑）并回传引用 */
+  async insertDrawioTemplate(document, webview) {
+    const dirUri = vscode.Uri.joinPath(vscode.Uri.joinPath(document.uri, '..'), 'diagrams');
+    await vscode.workspace.fs.createDirectory(dirUri);
+    // 找一个不冲突的文件名：diagram-1.drawio.svg …
+    let n = 1, fileUri = null, rel = '';
+    for (; n < 100; n++) {
+      rel = './diagrams/diagram-' + n + '.drawio.svg';
+      const u = vscode.Uri.joinPath(document.uri, '..', rel.replace(/^\.\//, ''));
+      try { await vscode.workspace.fs.stat(u); } catch (_e) { fileUri = u; break; } // 不存在 → 可用
+    }
+    if (!fileUri) { throw new Error('diagrams/ 下已有 99 个 diagram-*.drawio.svg'); }
+    const mx = '<mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="2" value="流程图（双击右键 → 用 Draw.io 编辑）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="280" y="500" width="280" height="70" as="geometry"/></mxCell></root></mxGraphModel>';
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="280" height="70" version="1.1" content="' + esc(mx) + '" viewBox="0 0 280 70">' +
+      '<g><rect x="2" y="2" width="276" height="66" rx="10" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>' +
+      '<text x="140" y="41" text-anchor="middle" font-size="14" font-family="Helvetica,sans-serif" fill="#23445d">流程图（右键 → 用 Draw.io 编辑）</text></g></svg>';
+    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(svg, 'utf8'));
+    webview.postMessage({
+      type: 'drawioInserted',
+      rel: rel.replace(/^\.\//, ''),
+      src: webview.asWebviewUri(fileUri).toString()
     });
   }
 

@@ -259,8 +259,7 @@
       iconBtn('<span style="text-decoration:underline">U</span>', '下划线（Markdown 无对应语法，保存后不保留）', 'underline'),
       iconBtn('<span style="text-decoration:line-through">S</span>', '删除线 · Ctrl+Shift+S', 'strike'),
       iconBtn('<mark style="padding:0 2px">A</mark>', '高亮 ==文本==', 'highlight'),
-      iconBtn('<code>&lt;/&gt;</code>', '行内代码 · Ctrl+`（恒为等宽字体）', 'incode'),
-      iconBtn('⋯', '更多格式（上标 / 下标 / 清除格式 · P1）', 'moreFmt')
+      iconBtn('<code>&lt;/&gt;</code>', '行内代码 · Ctrl+`（恒为等宽字体）', 'incode')
     ])));
     home.appendChild(group('段落', [
       iconBtn('•≡', '无序列表 · Ctrl+Shift+8', 'ul'),
@@ -275,8 +274,8 @@
         (i < 3 ? '标题 ' + (i + 1) + ' · Ctrl+' + (i + 1) : '标题 4–6 · Ctrl+4…6'), i < 3 ? 'h' + (i + 1) : 'hmore')
     )));
     home.appendChild(group('编辑', [
-      iconBtn('🔍', '查找（P1 交付）', 'noop'),
-      iconBtn('⇄', '替换（P1 交付）', 'noop')
+      iconBtn('🔍', '查找 · Ctrl+F', 'find'),
+      iconBtn('⇄', '替换 · Ctrl+H', 'replace')
     ]));
     ribbon.appendChild(home);
 
@@ -289,13 +288,13 @@
     ]));
     ins.appendChild(group('图表与代码', [
       iconBtn('<code>{ }</code>', '代码块（30+ 语言含 PL/SQL，语法高亮）· Ctrl+Shift+K', 'codeblock'),
-      iconBtn('∑', '数学公式（P1 后续版本）', 'noop'),
-      iconBtn('◈', 'Mermaid 图表（P1 后续版本）', 'noop'),
-      iconBtn('⬡', 'Draw.io 流程图（P1 后续版本）', 'noop')
+      iconBtn('∑', '数学公式（LaTeX：块级 $$ 与行内 $，双击可编辑）', 'math'),
+      iconBtn('◈', 'Mermaid 流程图（graph TD/LR，双击可编辑）', 'mermaid'),
+      iconBtn('⬡', 'Draw.io 流程图（新建 .drawio.svg 文件并插入引用，右键可用 Draw.io 编辑）', 'drawio')
     ]));
     ins.appendChild(group('其他', [
       iconBtn('――', '分割线', 'hr'),
-      iconBtn('⊕', '脚注（后续版本）', 'noop'),
+      iconBtn('⊕', '脚注（上标引用 + 定义追加文末）', 'footnote'),
       iconBtn('☰', '目录 TOC（按当前标题生成）', 'toc'),
       iconBtn('ℹ', '信息面板（提示框）', 'panelInfo'),
       iconBtn('🙂', 'Emoji（最近使用置顶）', 'emoji'),
@@ -330,7 +329,7 @@
       iconBtn('▤', '分屏模式（左源码右渲染）', 'mSplit')
     ]));
     view.appendChild(group('显示', [
-      iconBtn('🗂', '大纲面板（P1 交付）', 'noop'), iconBtn('#', '字数统计（状态栏常驻）', 'noop')
+      iconBtn('🗂', '大纲视图：打开侧栏标题树（点击标题跳转正文）', 'outline')
     ]));
     view.appendChild(group('缩放', [
       iconBtn('A⁻', '缩小字号', 'zoomOut'), fddl('100%', '缩放比例'),
@@ -340,8 +339,7 @@
       iconBtn('📄<small>▾</small>', '页面设置：纸张尺寸（适应屏幕 / A4 / A3 / A5 / B5 / Letter / Legal / 自定义），切换后内容流式重排', 'pageSetup'),
       iconBtn('🎨', '页面外观：背景色（护眼绿 / 羊皮纸 / 冰蓝 / 自定义）与条纹（横线 / 方格 / 点阵）', 'pageSetup')
     ]));
-    view.appendChild(group('主题与语言', [
-      iconBtn('🎨<small>▾</small>', '主题：跟随 VS Code', 'noop'),
+    view.appendChild(group('语言', [
       iconBtn('🌐', '界面语言：中文 / English（点击切换）', 'cycleLang')
     ]));
     view.appendChild(group('导出', [
@@ -386,7 +384,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.7.0</span>'
+      '<span class="seg">Markdown Word v1.7.1</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -856,6 +854,43 @@
   }
 
   // ================= 代码块（F09） =================
+  // F10：插入块级公式（LaTeX）——插入后立即弹源码编辑对话框
+  function insertMathBlock() {
+    const init = 'E = mc^2';
+    const md = document.createElement('div');
+    md.className = 'md-math'; md.setAttribute('data-tex', init);
+    md.innerHTML = (typeof MdMath !== 'undefined' && MdMath.render) ? (MdMath.render(init) || '<code>' + init + '</code>') : '<code>' + init + '</code>';
+    insertBlockAtCaret(md);
+    placeCaret(md, false);
+    scheduleSave();
+    editSourceDialog(T('editMath'), init, tex => {
+      md.setAttribute('data-tex', tex);
+      md.innerHTML = (typeof MdMath !== 'undefined' && MdMath.render) ? (MdMath.render(tex) || '<code>' + tex + '</code>') : '<code>' + tex + '</code>';
+      scheduleSave();
+    });
+  }
+  // F10：插入 Mermaid 流程图（graph TD 模板）——插入后立即弹源码编辑对话框
+  function insertMermaidBlock() {
+    const init = 'graph TD\nA[开始] --> B{通过?}\nB -->|是| C[完成]';
+    const mm = document.createElement('div');
+    mm.className = 'md-mermaid'; mm.setAttribute('data-code', init);
+    const svg = typeof MdMm !== 'undefined' && MdMm.render ? MdMm.render(init) : '';
+    mm.innerHTML = svg || '<pre>' + init.replace(/</g, '&lt;') + '</pre>';
+    insertBlockAtCaret(mm);
+    placeCaret(mm, false);
+    scheduleSave();
+    editSourceDialog(T('editMermaid'), init, code => {
+      mm.setAttribute('data-code', code);
+      const s2 = typeof MdMm !== 'undefined' && MdMm.render ? MdMm.render(code) : '';
+      mm.innerHTML = s2 || '<pre>' + code.replace(/</g, '&lt;') + '</pre>';
+      scheduleSave();
+    });
+  }
+  // F10：Draw.io——请求宿主在文档目录创建 .drawio.svg 模板并回传引用
+  function insertDrawioRef() {
+    vscode.postMessage({ type: 'insertDrawio' });
+  }
+
   function insertCodeBlock() {
     const tools = document.createElement('div');
     tools.className = 'code-tools'; tools.setAttribute('contenteditable', 'false');
@@ -1767,7 +1802,10 @@
       fnSaved: '脚注 {n} 已插入，定义已追加到文末', copied: '已复制 Markdown 源码',
       tocEmpty: '文档中尚无标题，无法生成目录', tocDone: '已按标题生成目录（{n} 项）',
       pdfHint: '已生成打印就绪页面并在浏览器打开：按 Ctrl+P → 目标选择“另存为 PDF”',
-      langName: '中文', exportPdfOpen: '导出 PDF（打印）'
+      langName: '中文', exportPdfOpen: '导出 PDF（打印）',
+      editMath: '编辑公式（LaTeX）', editMermaid: '编辑流程图（Mermaid 子集：graph TD/LR）',
+      drawioCreated: '已创建 {f} 并插入引用：右键图片 →「用 Draw.io 编辑」',
+      drawioFailed: 'Draw.io 文件创建失败：{e}', openOutline: '已打开侧栏大纲视图（活动栏 🗂）'
     },
     'en': {
       saved: '✓ Saved', saving: 'Saving…', pending: 'Unsaved',
@@ -1783,7 +1821,10 @@
       fnSaved: 'Footnote {n} inserted, definition appended at end', copied: 'Markdown copied',
       tocEmpty: 'No headings found to build TOC', tocDone: 'TOC generated ({n} items)',
       pdfHint: 'Print-ready page opened in browser: press Ctrl+P → “Save as PDF”',
-      langName: 'English', exportPdfOpen: 'Export PDF (print)'
+      langName: 'English', exportPdfOpen: 'Export PDF (print)',
+      editMath: 'Edit formula (LaTeX)', editMermaid: 'Edit diagram (Mermaid subset: graph TD/LR)',
+      drawioCreated: 'Created {f} and inserted a reference: right-click the image → "Edit with Draw.io"',
+      drawioFailed: 'Failed to create Draw.io file: {e}', openOutline: 'Outline view opened (activity bar 🗂)'
     }
   };
   let lang = 'zh';
@@ -2059,6 +2100,10 @@
         break;
       }
       case 'codeblock': insertCodeBlock(); break;
+      case 'math': case 'insertMath': insertMathBlock(); break;
+      case 'mermaid': case 'insertMermaid': insertMermaidBlock(); break;
+      case 'drawio': case 'insertDrawio': insertDrawioRef(); break;
+      case 'outline': case 'showOutline': vscode.postMessage({ type: 'showOutline' }); toast(T('openOutline')); break;
       case 'table': {
         const btn = $('.rtab[data-panel="rp-ins"]');
         showTablePicker(btn || editorWrap);
@@ -2107,7 +2152,6 @@
       case 'redo': execSimple('redo'); break;
       case 'toggleMode': setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg'); break;
       case 'paste': toast('请直接使用 Ctrl+V 粘贴（浏览器安全策略不允许程序化粘贴）'); break;
-      case 'noop': toast('该功能在后续版本交付（见需求文档优先级）'); break;
       default:
         if (['rowAbove', 'rowBelow', 'delRow', 'colLeft', 'colRight', 'delCol',
           'alLeft', 'alCenter', 'alRight', 'toggleHead', 'delTable',
@@ -2645,6 +2689,22 @@
         setSaveState('saved');
         break;
       case 'imageSaved': onImageSaved(msg); break;
+      case 'drawioInserted': {
+        // 宿主已创建 .drawio.svg 模板 → 与粘贴图片同路径插入（源码模式写 textarea，页面模式插入 img）
+        if (msg.error) { toast(T('drawioFailed').replace('{e}', msg.error)); break; }
+        if (mode !== 'wysiwyg') {
+          insertAtTextarea(srcTextarea, '![' + 'Draw.io 流程图' + '](' + msg.rel + ')');
+        } else {
+          const img = document.createElement('img');
+          img.setAttribute('data-src', msg.rel);
+          img.src = msg.src;
+          img.alt = 'Draw.io 流程图';
+          insertAtCaret(img);
+        }
+        scheduleSave();
+        toast(T('drawioCreated').replace('{f}', msg.rel));
+        break;
+      }
       case 'imageMap': applyImageMap(msg.map || {}); break;
       case 'gotoHeading': gotoHeading(msg.text); break;
       case 'aiChunk':
