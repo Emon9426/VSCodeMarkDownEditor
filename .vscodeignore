@@ -1,6 +1,7 @@
 .vscode/**
 .vscode-test/**
 test/**
+docs/**
 node_modules/**
 .gitignore
 npm-debug.log
