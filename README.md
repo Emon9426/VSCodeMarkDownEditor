@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="media/icon.png" width="128" height="128" alt="Markdown Word 图标" />
+<img src="media/icon.png" width="128" height="128" alt="Markdown Word icon" />
 
 # Markdown Word
 
@@ -15,6 +15,8 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 [![Version](https://img.shields.io/badge/version-1.7.1-8A2BE2)](CHANGELOG.md)
 
 **磁盘上永远是标准 Markdown** —— 可视化编辑零语法妥协，往返保真。
+
+简体中文 · [English](#markdown-word-english)
 
 </div>
 
@@ -295,5 +297,309 @@ README 截图由流水线自动生成：`node scripts/build-shots.js` 生成演�
 版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 许可证
+
+MIT
+
+---
+
+<div align="center">
+
+# Markdown Word (English)
+
+**A Word-style WYSIWYG Markdown editor · VS Code extension**
+
+Write Markdown the way you use Word — two-row icon Ribbon, visual tables,
+slash commands, a Copilot AI assistant, formulas / diagrams / syntax highlighting,
+page setup, and a bilingual (Chinese/English) UI.
+
+[![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](#development--testing)
+[![License](https://img.shields.io/badge/license-MIT-blue)](#license)
+[![Version](https://img.shields.io/badge/version-1.7.1-8A2BE2)](CHANGELOG.md)
+
+**The file on disk is always plain, standard Markdown** — visual editing with zero syntax compromise, lossless round-trip.
+
+[简体中文](#markdown-word) · English
+
+</div>
+
+---
+
+![WYSIWYG overview](docs/images/overview-wysiwyg.png)
+
+Open any `.md` file and get a Word-like experience: centered paper, live rendering, auto-save.
+Latin and CJK text each get their own font (Segoe UI × Microsoft YaHei); code always uses a monospace font.
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Feature Tour](#feature-tour)
+  - [Three editing modes](#1-three-editing-modes)
+  - [Two-row icon Ribbon](#2-two-row-icon-ribbon)
+  - [Visual tables](#3-visual-tables)
+  - [Slash command menu](#4-slash-command-menu)
+  - [Syntax highlighting (incl. PL/SQL)](#5-syntax-highlighting-incl-plsql)
+  - [Math formulas](#6-math-formulas)
+  - [Mermaid diagrams](#7-mermaid-diagrams)
+  - [Draw.io integration](#8-drawio-integration)
+  - [AI assistant (GitHub Copilot)](#9-ai-assistant-github-copilot)
+  - [Find & Replace](#10-find--replace)
+  - [Outline view & breadcrumbs](#11-outline-view--breadcrumbs)
+  - [Page setup & appearance](#12-page-setup--appearance)
+  - [Persistent image paste](#13-persistent-image-paste)
+  - [Smart paste](#14-smart-paste)
+  - [Footnotes · TOC · callout panels](#15-footnotes--toc--callout-panels)
+  - [Emoji panel with recents](#16-emoji-panel-with-recents)
+  - [Bilingual UI](#17-bilingual-ui)
+  - [Export HTML / PDF](#18-export-html--pdf)
+  - [Dark theme](#19-dark-theme)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Settings](#settings)
+- [Known Limitations](#known-limitations)
+- [Development & Testing](#development--testing)
+- [License](#license)
+
+## Installation
+
+**Option 1: Install from VSIX (recommended)**
+
+```bash
+code --install-extension wysiwyg-markdown-editor-1.7.1.vsix
+```
+
+Or via the Extensions panel → `···` → **Install from VSIX...**.
+
+**Option 2: Run from source**
+
+```bash
+git clone https://github.com/Emon9426/VSCodeMarkDownEditor.git
+code VSCodeMarkDownEditor   # press F5 to launch the Extension Development Host
+```
+
+After installing, opening any `.md` file enters the Word-style editor. If it still opens in the plain text editor:
+right-click the file tab → **Reopen Editor With...** → choose *Markdown Word 编辑器* and set it as default.
+
+## Feature Tour
+
+### 1. Three editing modes
+
+**WYSIWYG / Source / Split** — switch anytime (status bar cycles modes, or the Ribbon *View* tab).
+Source and split modes use exactly the same paper width as page mode, so switching never jumps.
+
+| Mode | Description |
+|---|---|
+| WYSIWYG | Edit the rendered document directly; every format applies instantly |
+| Source | Edit Markdown source in a monospace font; can open beside the native editor (link in the hint bar) |
+| Split | Source on the left, rendered preview on the right, scroll-synced |
+
+![Source mode](docs/images/mode-source.png)
+
+![Split mode](docs/images/mode-split.png)
+
+### 2. Two-row icon Ribbon
+
+Tab row (Home / Insert / Table / Table Tools / View) plus a single row of tool groups — always two rows, never wraps.
+Every button is an icon with a localized tooltip including its shortcut.
+
+![Insert tab](docs/images/ribbon-insert.png)
+
+### 3. Visual tables
+
+- **Grid picker**: hover to select rows × columns and insert, just like Word;
+- **Contextual table toolbar**: appears when the cursor enters a table — insert/delete rows & columns, align, move rows/columns;
+- `\|` escaping inside cells, `Tab` / `Enter` cell navigation (auto-continues a row at the last cell).
+
+![Table grid picker](docs/images/table-picker.png)
+
+![Table toolbar](docs/images/table-toolbar.png)
+
+### 4. Slash command menu
+
+Confluence-style: type `/` anywhere in a paragraph to summon a grouped menu (AI / Basic blocks / Lists / Media & Insert / Emoji),
+with keyword filtering and pinyin shortcuts (e.g. `/biaoge` → table). Enter inserts.
+
+![Slash menu](docs/images/slash-menu.png)
+
+### 5. Syntax highlighting (incl. PL/SQL)
+
+A self-built, zero-dependency highlighter covers 30+ languages: keywords / types / strings / comments / numbers,
+with **dedicated PL/SQL and T-SQL support** (case-insensitive keywords, `CREATE PROCEDURE`, …).
+Code blocks and inline code always use a monospace font (Consolas, configurable); switch languages anytime to re-highlight.
+
+```text
+Selected languages: plsql tsql javascript typescript python java c cpp csharp
+go rust php ruby swift kotlin scala sql xml yaml json html css bash powershell diff …
+```
+
+### 6. Math formulas
+
+A self-built LaTeX-subset renderer (zero external dependencies):
+
+- Block `$$...$$` and inline `$...$`;
+- Fractions `\frac`, radicals `\sqrt` (incl. n-th root), super/subscripts (with `{}` groups),
+  60+ symbols (∑ ∫ ≤ ≠ → α β γ …), `\text`, `\overline / \vec / \hat`;
+- **Double-click a formula** to open a LaTeX source dialog with live re-rendering;
+- Inline math only renders space-free content — `$100` stays a price, not a formula.
+
+![Math formulas](docs/images/math-block.png)
+
+### 7. Mermaid diagrams
+
+A self-built `graph TD / LR` subset rendered to SVG: rect `[]` / rounded `()` / diamond `{}` nodes,
+four edge styles, edge labels; topological layering with orthogonal routing. **Double-click a diagram to edit its source**;
+unsupported syntax (e.g. sequence diagrams) falls back to showing the source — the document is never broken.
+Ribbon *Insert → ◈* inserts a template and opens the editor dialog.
+
+![Mermaid diagram](docs/images/mermaid-diagram.png)
+
+### 8. Draw.io integration
+
+Ribbon *Insert → ⬡* creates a `.drawio.svg` template under `diagrams/` in the document folder and inserts a reference;
+right-click the image → **Edit with Draw.io** (requires the [vscode-drawio](https://marketplace.visualstudio.com/items?itemName=hediet.vscode-drawio) extension)
+opens it side by side; saving updates the image. `.drawio.svg` uses standard image syntax and renders natively on GitHub.
+
+### 9. AI assistant (GitHub Copilot)
+
+Reuses the Copilot session already signed into VS Code (official `vscode.lm` API) — **no second login, no API keys**:
+
+- **Selection AI**: select text to reveal the ✨ floating bar — rewrite / polish / expand / condense / translate Chinese↔English / fix typos / custom instruction;
+  the result card shows the original struck through plus streaming new text — accept / retry / follow-up / discard;
+- **Slash AI**: `/AI大纲` (outline for the current section based on heading context), `/AI续写` (continue writing at the cursor);
+- Graceful degradation when not signed in or the API is unavailable; `markdownWord.ai.enabled` toggles AI, `ai.model` picks a model.
+
+### 10. Find & Replace
+
+`Ctrl+F` / `Ctrl+H`: case and regex toggles, match count, Enter / Shift+Enter navigation,
+replace current / replace all. Highlights use the **CSS Custom Highlight API** — zero DOM pollution,
+never affects serialization or saving.
+
+![Find & Replace](docs/images/find-replace.png)
+
+### 11. Outline view & breadcrumbs
+
+- **Dedicated activity-bar entry** (🗂 icon): a heading tree (H1–H6) that refreshes as you edit;
+  click any heading to jump into the document with a flash highlight;
+- **Breadcrumbs**: a sticky heading path at the top of the editing area — correct even when the cursor sits in body text; click a level to jump.
+
+### 12. Page setup & appearance
+
+Status bar 📄 or Ribbon *View → Page*:
+
+- **Paper size**: fit screen (default, max 1200px) / A3 / A4 / A5 / B5 / Letter / Legal / custom;
+  switching triggers **pure-CSS reflow** (line wrapping, table shrinking, horizontal code scroll);
+- **Page background**: follow theme / eye-care green / parchment / ice blue / custom color (each with a dark variant);
+- **Pattern**: none / lines / grid / dots (spacing aligned to line height);
+- All are view-layer settings, persisted per workspace, **never written into the Markdown file**.
+
+![Page setup](docs/images/page-setup.png)
+
+### 13. Persistent image paste
+
+`Ctrl+V` pastes screenshots directly — they are saved as files on disk (default `./images/DocName-timestamp.png`,
+folder and naming configurable) and referenced by relative path. **Temporary blobs are never written**,
+so images survive switching machines. Local images resolve automatically in the editor and preview; drag-and-drop files also works.
+
+### 14. Smart paste
+
+Content copied from **Word** (including `mso-list` nested lists), **Excel** or **web pages** is converted to Markdown
+(headings, bold/italic, tables, list levels preserved); Markdown copied from other sources renders automatically.
+Pasting inside tables / lists / code blocks inserts plain text to avoid format explosions.
+
+### 15. Footnotes · TOC · callout panels
+
+- **Footnotes**: `[^1]` references render as clickable superscripts; definitions are appended at the end;
+  one click on the Ribbon inserts with automatic numbering;
+- **TOC**: generated from current headings in one click;
+- **Callout panels**: four colors (info / tip / warning / error), serialized back to Markdown syntax.
+
+### 16. Emoji panel with recents
+
+The Ribbon and slash menu share one emoji panel (categories + search).
+**Recently used emojis are pinned to the top** (up to 24, persisted per workspace, synced across both entries).
+
+![Emoji panel](docs/images/emoji-panel.png)
+
+### 17. Bilingual UI
+
+`markdownWord.ui.language` (`auto` / `zh-CN` / `en`) or the status bar 🌐 toggles instantly.
+Covers Ribbon tooltips, menus, dialogs, find bar, AI cards, context menus and other core strings.
+
+### 18. Export HTML / PDF
+
+- **Export HTML**: a self-contained single file (styles + highlighting inlined), ready to distribute;
+- **Export PDF**: generates a print-ready `@page` HTML and opens it in the browser (Ctrl+P → Save as PDF),
+  honoring the paper size from page setup.
+
+### 19. Dark theme
+
+Fully follows the VS Code theme (CSS variables); dark mode has dedicated colors for page background, panels and highlights.
+
+![Dark theme](docs/images/dark-theme.png)
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+F` / `Ctrl+H` | Find / Replace |
+| `Ctrl+B` / `Ctrl+I` / `Ctrl+U` | Bold / Italic / Underline |
+| `Ctrl+1` … `Ctrl+6` | Heading 1–6 |
+| `Ctrl+Shift+K` | Code block |
+| `Ctrl+K` | Insert link |
+| `Ctrl+Alt+T` | Insert table (grid picker) |
+| `Ctrl+Alt+V` | Cycle editing mode |
+| `Ctrl+Shift+7 / 8 / 9` | Ordered / unordered / task list |
+| `Ctrl+Shift+Q` | Blockquote |
+| `Tab` / `Shift+Tab` | Indent / outdent (cell navigation in tables) |
+| `/` | Slash command menu |
+| `Esc` | Close floating layers |
+
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `markdownWord.defaultMode` | `wysiwyg` | Default mode when opening a document (`wysiwyg` / `source` / `split`) |
+| `markdownWord.editor.fontFamilyLatin` | follow | Latin font |
+| `markdownWord.editor.fontFamilyCJK` | follow | CJK font (Microsoft YaHei / SimSun / KaiTi / Source Han Sans / LXGW WenKai…) |
+| `markdownWord.editor.fontSize` | `15` | Body font size |
+| `markdownWord.editor.codeFontFamily` | `Consolas` | Monospace font for code blocks / inline code |
+| `markdownWord.image.saveFolder` | `./images` | Folder for pasted images |
+| `markdownWord.image.fileNamePattern` | `${docName}-${timestamp}` | Image naming pattern |
+| `markdownWord.slashMenu.enabled` | `true` | Slash menu toggle |
+| `markdownWord.table.defaultHeader` | `true` | Default header row for new tables |
+| `markdownWord.page.size` | `fit` | Paper size (`fit` / `a3` / `a4` / `a5` / `b5` / `letter` / `legal` / `custom`) |
+| `markdownWord.page.background` | `auto` | Page background (preset name or `#RRGGBB`) |
+| `markdownWord.page.pattern` | `none` | Pattern (`lines` / `grid` / `dots`) |
+| `markdownWord.ai.enabled` | `true` | Master AI toggle |
+| `markdownWord.ai.model` | auto | Copilot model override |
+| `markdownWord.ui.language` | `auto` | UI language |
+
+Document-level settings (fonts, page) are also persisted per **workspace** (restored for the same project) without touching the Markdown file.
+
+## Known Limitations
+
+- Native PDF generation currently ships as a "print path" (browser print dialog); embedded fonts come later;
+- No line numbers in code blocks yet;
+- Superscript / subscript / clear-formatting buttons are pending (no placeholder buttons until implemented);
+- Mermaid covers a subset (`graph TD/LR`); sequence diagrams etc. fall back to source display;
+- AI requires VS Code ≥ 1.95 and a signed-in GitHub Copilot.
+
+## Development & Testing
+
+```bash
+npm test            # 201 automated tests
+npm run package     # package the vsix
+```
+
+Test stack: stub smoke → core engine units → jsdom real-DOM integration → host-side (vscode stub) chains →
+multi-viewport UI stability (320–1920px popup clamping / stress / hostile input) → CDP real-Chromium viewport assertions →
+performance benchmarks (50/200KB parse/roundtrip regression guards).
+
+README screenshots are pipeline-generated: `node scripts/build-shots.js` builds a demo page,
+then with Edge headless (CDP port 9333) run `node scripts/take-shots.js` to capture all scenes.
+
+The full requirements spec, UI design and progress tracker live in [需求与UI设计文档.html](需求与UI设计文档.html) (open in a browser);
+release history in [CHANGELOG.md](CHANGELOG.md).
+
+## License
 
 MIT
