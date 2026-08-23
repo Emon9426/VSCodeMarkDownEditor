@@ -81,6 +81,16 @@ body.vscode-dark #editor { box-shadow: 0 2px 12px rgba(0,0,0,.5); }
 #editor hr { border: none; border-top: 1.5px dashed var(--vscode-panel-border, #cbd5e1); margin: 18px 0; }
 #editor a { color: var(--vscode-textLink-foreground, #4f46e5); }
 #editor img { max-width: 100%; border-radius: 4px; display: block; margin: 8px auto; }
+/* 表格单元格内的图片：行内呈现，不撑破列宽（可与拖拽缩放配合） */
+#editor td img, #editor th img { display: inline-block; margin: 2px 0; vertical-align: middle; }
+/* 图片选中态与缩放手柄（F06 拖拽缩放） */
+#editor img.md-imgsel { outline: 2px solid var(--vscode-focusBorder, #4f46e5); outline-offset: 1px; cursor: default; }
+#imgHandle {
+  position: fixed; width: 10px; height: 10px; background: #fff;
+  border: 2px solid var(--vscode-focusBorder, #4f46e5); border-radius: 2px;
+  cursor: nwse-resize; z-index: 95; display: none; box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  user-select: none; -webkit-user-select: none;
+}
 #editor mark { background: #fde047; color: inherit; padding: 0 3px; border-radius: 2px; }
 #editor del { color: var(--vscode-descriptionForeground, #94a3b8); }
 
@@ -208,8 +218,7 @@ kbd {
 #emojiGrid span:hover, #emojiRecent span:hover { background: var(--vscode-list-hoverBackground, #eef2ff); }
 #emojiSearch { width: 100%; margin-bottom: 8px; border: 1px solid var(--vscode-input-border, #cbd5e1); border-radius: 6px; padding: 4px 8px; background: var(--vscode-input-background, #fff); color: var(--vscode-input-foreground, inherit); font: inherit; font-size: 12px; outline: none; }
 
-/* ============ 源码 / 分屏模式 ============ */
-/* 纸张宽度变量由 JS 设置在 #main 上：所见即所得纸张与源码模式纸张共用，保证两种模式尺寸一致 */
+/* ============ 源码 / 分屏模式 ============ *//* 纸张宽度变量由 JS 设置在 #main 上：所见即所得纸张与源码模式纸张共用，保证两种模式尺寸一致 */
 #editor { max-width: var(--page-width, 760px); }
 /* flex:1 必须在基础规则上：#main 是 flex 行容器，缺了它 sourceArea 会按内容塌缩（源码模式窄条 bug）；
    display:none 时不参与布局，wysiwyg 模式下无副作用 */

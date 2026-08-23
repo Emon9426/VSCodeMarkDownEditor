@@ -384,7 +384,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.7.3</span>'
+      '<span class="seg">Markdown Word v1.8.0</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -2378,6 +2378,66 @@
     placeCaret(rows[nr].children[c] || rows[nr].children[0], false);
   }
 
+  // ================= 图片：点击选中 + 拖拽缩放（F06） =================
+  // 有 width 的图片序列化为 <img src width>（GitHub / VS Code 预览原生渲染），无 width 保持 ![alt](src)
+  let selImg = null, imgDrag = null;
+  const imgHandle = document.createElement('div'); imgHandle.id = 'imgHandle';
+
+  function hideImgSel() {
+    if (selImg) { selImg.classList.remove('md-imgsel'); }
+    selImg = null;
+    imgHandle.style.display = 'none';
+  }
+  function placeImgHandle() {
+    if (!selImg) { return; }
+    const r = selImg.getBoundingClientRect();
+    if (!r.width && !r.height) { imgHandle.style.display = 'none'; return; } // 隐藏（jsdom / display:none）
+    imgHandle.style.display = 'block';
+    imgHandle.style.left = (r.right - 5) + 'px';
+    imgHandle.style.top = (r.bottom - 5) + 'px';
+  }
+  function initImageResize() {
+    document.body.appendChild(imgHandle);
+    editorWrap.addEventListener('scroll', () => { if (selImg) { placeImgHandle(); } });
+    editor.addEventListener('mousedown', e => {
+      // 图片选择态不需要光标定位：阻止默认（防拖动时选区闪动）
+      if (selImg) { e.preventDefault(); }
+    });
+    editor.addEventListener('click', e => {
+      const img = e.target && e.target.closest ? e.target.closest('img') : null;
+      if (img) {
+        if (selImg === img) { hideImgSel(); return; } // 再点一次取消
+        hideImgSel();
+        selImg = img;
+        img.classList.add('md-imgsel');
+        placeImgHandle();
+      } else if (selImg) {
+        hideImgSel();
+      }
+    });
+    imgHandle.addEventListener('mousedown', e => {
+      if (!selImg) { return; }
+      e.preventDefault(); e.stopPropagation();
+      const startW = selImg.getBoundingClientRect().width || parseInt(selImg.getAttribute('width') || '0', 10) || 400;
+      imgDrag = { x: e.clientX, w: Math.max(20, startW) };
+    });
+    document.addEventListener('mousemove', e => {
+      if (!imgDrag || !selImg) { return; }
+      const dx = e.clientX - imgDrag.x;
+      const w = Math.max(40, Math.min(imgDrag.w + dx, 2400));
+      selImg.style.width = w + 'px';
+      selImg.style.height = 'auto';
+      placeImgHandle();
+    });
+    document.addEventListener('mouseup', () => {
+      if (imgDrag && selImg) {
+        selImg.setAttribute('width', parseInt(selImg.style.width, 10));
+        scheduleSave(); // 序列化：有 width → <img src width>
+      }
+      imgDrag = null;
+    });
+  }
+
   // ================= 粘贴（图片落盘 / md 源码渲染 / HTML 清洗） =================
   // 从剪贴板数据收集图片文件：① items 条目（截图 / 网页复制图像）；② files 列表
   // （文件管理器复制图片文件时 items 的 type 可能为空，须按 files 的 type/扩展名兜底）
@@ -2621,6 +2681,7 @@
     editor.addEventListener('keydown', onKeydown);
     editor.addEventListener('paste', onPaste);
     editor.addEventListener('drop', onDrop);
+    initImageResize(); // 图片点击选中 + 拖拽缩放（F06）
     editor.addEventListener('click', e => {
       const check = e.target.closest('.md-check');
       if (check) {

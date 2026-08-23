@@ -796,6 +796,56 @@ test('F06 粘贴图片：文件管理器复制（items 无类型、files 兜底�
   assert.ok(/^jpe?g$/i.test(msg.ext), 'ext 按文件名扩展识别: ' + msg.ext);
 });
 
+test('F06 表格内图片：单元格渲染 img 且往返保真', () => {
+  const MD2 = '文字 ![图标](logo.png) 混排\n\n| 名称 | 图示 |\n|---|---|\n| 图标 | ![logo](logo.png) |\n';
+  win.__onMessage({ data: { type: 'init', text: MD2, settings: {} } });
+  const inline = qa('#editor > p img[data-src="logo.png"]');
+  assert.ok(inline.length === 1, '段落行内图片渲染');
+  const tdImg = qa('#editor td img[data-src="logo.png"]');
+  assert.ok(tdImg.length === 1, '表格单元格图片渲染');
+  const out = win.MdCore.domToMarkdown(q('#editor'));
+  assert.ok(out.indexOf('![图标](logo.png)') !== -1, '行内图片序列化');
+  assert.ok(out.indexOf('| 图标 | ![logo](logo.png) |') !== -1, '表格图片序列化回单元格: ' + out.replace(/\n/g, '⏎').slice(0, 120));
+});
+
+test('F06 拖拽缩放：width 持久化为 <img src width> 且重载还原', async () => {
+  win.__onMessage({ data: { type: 'init', text: '# 图\n\n![a](x.png)\n', settings: {} } });
+  const img = qa('#editor img[data-src="x.png"]')[0];
+  assert.ok(img && !img.getAttribute('width'), '初始无 width');
+  // 模拟点击选中 → 手柄拖动 → 松开
+  img.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  assert.ok(img.classList.contains('md-imgsel'), '点击选中');
+  const handle = q('#imgHandle');
+  assert.ok(handle, '手柄已创建');
+  img.setAttribute('width', '200');
+  handle.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, clientX: 500 }));
+  doc.dispatchEvent(new win.MouseEvent('mousemove', { bubbles: true, clientX: 620 }));
+  doc.dispatchEvent(new win.MouseEvent('mouseup', { bubbles: true }));
+  assert.strictEqual(img.getAttribute('width'), '320', '拖动 +120px 后宽度=320（起点取 width 属性 200）');
+  await wait(650); // 防抖保存
+  const saved = postMessages().filter(m => m.type === 'update').pop();
+  assert.ok(saved && saved.text.indexOf('<img src="x.png" alt="a" width="320">') !== -1, '序列化带 width: ' + (saved ? saved.text.replace(/\n/g, '⏎').slice(0, 100) : '无 update'));
+  // 重载还原（HTML img 白名单）
+  win.__onMessage({ data: { type: 'init', text: 'P\n\n<img src="x.png" alt="a" width="320">\n', settings: {} } });
+  const img2 = qa('#editor img[data-src="x.png"]')[0];
+  assert.ok(img2 && img2.getAttribute('width') === '320', 'HTML img 白名单还原 width=320');
+});
+
+test('F06 表格内粘贴图片：不被纯文本分支拦截，走 saveImage', async () => {
+  win.__onMessage({ data: { type: 'init', text: '| a | b |\n|---|---|\n| 1 | 2 |\n', settings: {} } });
+  const td = qa('#editor td')[1]; // 表头是 th：td[1] 为数据行第 2 格
+  caretIn(td, true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  const f = new win.File(['p'], 'cell.png', { type: 'image/png' });
+  const ev = new win.Event('paste', { bubbles: true, cancelable: true });
+  ev.clipboardData = { items: [{ kind: 'file', type: 'image/png', getAsFile: () => f }], getData: () => '', files: [] };
+  q('#editor').dispatchEvent(ev);
+  await wait(30);
+  assert.ok(postMessages().some(m => m.type === 'saveImage'), '表格内粘贴图片走落盘流程');
+  win.__onMessage({ data: { type: 'imageSaved', id: postMessages().filter(m => m.type === 'saveImage').pop().id, relPath: 'images/c.png', webSrc: 'wv://c' } });
+  assert.ok(qa('#editor td img[data-src="images/c.png"]').length === 1, '图片插入单元格');
+});
+
 chain.then(() => {
   console.log('\n结果: ' + (failed ? failed + ' 项失败' : '全部通过'));
   if (failed) { process.exitCode = 1; }

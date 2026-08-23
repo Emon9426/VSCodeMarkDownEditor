@@ -91,6 +91,16 @@
     });
     // 5.5) 剩余纯文本 HTML 转义（此时真实 HTML 均已进入占位符，不会误伤）
     s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // 5.5) 白名单行内 img 还原（拖拽缩放持久化 width + 历史文档 HTML 图）：
+    //     &lt;img src=".." alt=".." width=".."&gt; → 真实 img（属性白名单 src/alt/width，其余丢弃）
+    s = s.replace(/&lt;img\s+([\s\S]*?)\/?&gt;/g, function (m0, attrs) {
+      function unesc(x) { return String(x).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&'); }
+      var src = /(?:data-)?src=&quot;([\s\S]*?)&quot;/.exec(attrs);
+      if (!src) { return m0; }
+      var alt = /alt=&quot;([\s\S]*?)&quot;/.exec(attrs);
+      var w = /width=&quot;(\d+)&quot;/.exec(attrs);
+      return put('<img data-src="' + unesc(src[1]) + '" alt="' + (alt ? unesc(alt[1]) : '') + '"' + (w ? ' width="' + w[1] + '"' : '') + '>');
+    });
     // 5.6) 白名单行内样式 span 还原（选区级字体持久化，F02）：&lt;span style="font-family:..."&gt; → 真实标签
     s = s.replace(/&lt;(\/?)span style=&quot;font-family:[^&]*&gt;/g, function (m0, slash) {
       var m2 = /font-family:([^&]*)&gt;/.exec(m0);
@@ -524,7 +534,15 @@
         }
         case 'html': {
           var d = doc.createElement('div'); d.className = 'md-raw-html';
-          d.innerHTML = b.raw; return d; // 保持可编辑（面板等 HTML 块内容可直接修改）
+          d.innerHTML = b.raw;
+          // 本地图片进 HTML 块时补 data-src（图片解析按 data-src 收集相对路径）
+          Array.prototype.forEach.call(d.querySelectorAll('img'), function (im) {
+            var s0 = im.getAttribute('src') || '';
+            if (s0 && !/^(https?:|data:|vscode-webview:)/i.test(s0) && !im.getAttribute('data-src')) {
+              im.setAttribute('data-src', s0);
+            }
+          });
+          return d; // 保持可编辑（面板等 HTML 块内容可直接修改）
         }
       }
       var p2 = doc.createElement('p'); return p2;
@@ -584,8 +602,18 @@
             Array.prototype.forEach.call(clone.querySelectorAll('sup'), function (s0) { s0.remove(); });
             blocks.push({ type: 'footnote', id: el.getAttribute('data-fn') || '1', text: serInline(clone) });
           } else if (el.classList.contains('md-raw-html') || el.classList.contains('md-panel')) {
-            // HTML 块 / 四色提示面板：以 outerHTML 原样持久化（保留 class，往返稳定）
-            blocks.push({ type: 'html', raw: el.outerHTML });
+            // HTML 块 / 四色提示面板：以 outerHTML 原样持久化（保留 class，往返稳定）。
+            // 克隆中把 img 的 src 还原为相对路径（data-src 优先）——显示用的 webview URI 绝不能写盘
+            var hClone = el.cloneNode(true);
+            Array.prototype.forEach.call(hClone.querySelectorAll('img'), function (im) {
+              var ds = im.getAttribute('data-src');
+              if (ds) { im.setAttribute('src', ds); im.removeAttribute('data-src'); }
+              else {
+                var s1 = im.getAttribute('src') || '';
+                if (/^vscode-webview:/i.test(s1)) { im.removeAttribute('src'); }
+              }
+            });
+            blocks.push({ type: 'html', raw: hClone.outerHTML });
           } else if (el.classList.contains('code-tools')) {
             // 代码块工具条（UI 附属结构），序列化时忽略
           } else {
@@ -680,7 +708,14 @@
           case 'img': {
             var src = n.getAttribute('data-src') || n.getAttribute('src') || '';
             var alt = n.getAttribute('alt') || '';
-            out.push('![' + alt + '](' + src + ')');
+            // 拖拽缩放的宽度持久化：有 width 时写 <img> HTML（GitHub / VS Code 预览原生渲染），
+            // 无 width 保持纯 ![alt](src) 语法；宽度过小视为未设置
+            var iw = parseInt(n.getAttribute('width') || (n.style && n.style.width) || '', 10);
+            if (iw >= 20) {
+              out.push('<img src="' + src.replace(/"/g, '%22') + '" alt="' + alt.replace(/"/g, '&quot;') + '" width="' + iw + '">');
+            } else {
+              out.push('![' + alt + '](' + src + ')');
+            }
             break;
           }
           case 'br': out.push('\n'); break;

@@ -12,7 +12,7 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](#开发与测试)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#许可证)
-[![Version](https://img.shields.io/badge/version-1.7.3-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.0-8A2BE2)](CHANGELOG.md)
 
 **磁盘上永远是标准 Markdown** —— 可视化编辑零语法妥协，往返保真。
 
@@ -64,7 +64,7 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 **方式一：VSIX 安装（推荐）**
 
 ```bash
-code --install-extension wysiwyg-markdown-editor-1.7.3.vsix
+code --install-extension wysiwyg-markdown-editor-1.8.0.vsix
 ```
 
 或在扩展面板 → `···` → **从 VSIX 安装...**。
@@ -193,11 +193,14 @@ Ribbon「插入 → ⬡」在文档目录 `diagrams/` 下创建 `.drawio.svg` �
 
 ![页面设置](docs/images/page-setup.png)
 
-### 13. 图片粘贴持久化
+### 13. 图片：粘贴持久化 + 拖拽缩放 + 表格内嵌图
 
-`Ctrl+V` 直接粘贴截图——自动保存为磁盘文件（默认 `./images/文档名-时间戳.png`，
-可配置目录与命名），文档中引用相对路径。**临时 blob 永不写入**，换机器不丢图。
-本地图片在编辑器与预览中自动解析为可显示资源，也支持本地文件拖拽插入。
+- `Ctrl+V` 粘贴截图自动落盘（默认 `./images/文档名-时间戳.png`，可配置目录与命名），
+  以相对路径引用——**临时 blob 永不写入**，换机器不丢图；支持本地文件拖拽、文件管理器复制粘贴、多图一次粘贴；
+- **点击图片 → 拖动右下角手柄调整尺寸**（等比缩放，宽度持久化为 `<img width>`，
+  GitHub / VS Code 预览原生渲染；未调整过的图片保持纯 `![alt](src)` 语法）；
+- **图片可放入表格单元格**（行内呈现、防撑破列宽，同样支持粘贴与缩放）；
+- 本地图片自动解析为可显示资源；图片丢失时红虚线提示。
 
 ### 14. 智能粘贴
 
@@ -326,7 +329,7 @@ page setup, and a bilingual (Chinese/English) UI.
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](#development--testing)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
-[![Version](https://img.shields.io/badge/version-1.7.3-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.0-8A2BE2)](CHANGELOG.md)
 
 **The file on disk is always plain, standard Markdown** — visual editing with zero syntax compromise, lossless round-trip.
 
@@ -378,7 +381,7 @@ Latin and CJK text each get their own font (Segoe UI × Microsoft YaHei); code a
 **Option 1: Install from VSIX (recommended)**
 
 ```bash
-code --install-extension wysiwyg-markdown-editor-1.7.3.vsix
+code --install-extension wysiwyg-markdown-editor-1.8.0.vsix
 ```
 
 Or via the Extensions panel → `···` → **Install from VSIX...**.
@@ -507,11 +510,15 @@ Status bar 📄 or Ribbon *View → Page*:
 
 ![Page setup](docs/images/page-setup.png)
 
-### 13. Persistent image paste
+### 13. Images: Persistent Paste + Drag-to-Resize + In-Table
 
-`Ctrl+V` pastes screenshots directly — they are saved as files on disk (default `./images/DocName-timestamp.png`,
-folder and naming configurable) and referenced by relative path. **Temporary blobs are never written**,
-so images survive switching machines. Local images resolve automatically in the editor and preview; drag-and-drop files also works.
+- `Ctrl+V` pastes screenshots and saves them to disk (default `./images/DocName-timestamp.png`,
+  folder and naming configurable), referenced by relative path — **temporary blobs are never written**;
+  file drag-and-drop, pasting copied image files, and pasting multiple images at once all work;
+- **Click an image and drag the bottom-right handle to resize** (aspect-preserving; the width
+  persists as `<img width>`, rendered natively by GitHub / VS Code preview; unresized images keep plain `![alt](src)` syntax);
+- **Images can live inside table cells** (inline presentation, column-width safe; pasting and resizing both work);
+- Local images resolve automatically; missing images get a dashed-red hint.
 
 ### 14. Smart paste
 
