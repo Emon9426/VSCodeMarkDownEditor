@@ -155,6 +155,14 @@ test('源码/分屏模式纸张宽度与页面模式一致（#sourceArea 必须�
   assert.ok(/flex:\s*1/.test(seg), '#sourceArea 基础规则须含 flex:1（否则 flex 行容器中塌缩）');
   assert.ok(cssCode.indexOf('var(--page-width') !== -1, '源码纸张宽度吃 --page-width 变量');
 });
+test('源码模式高度撑满（body.source #srcCol 必须声明 flex:1 + min-height:0）', () => {
+  // 回归守卫：#sourceArea 是 flex 列容器，#srcCol 缺 flex:1 时高度按内容塌缩
+  // （2026-08-23 用户报障：宽度修好后高度仍只有两行高——textarea 默认 rows=2）
+  const m = cssCode.match(/body\.source #srcCol\s*\{[^}]*\}/);
+  assert.ok(m, 'body.source #srcCol 规则存在');
+  assert.ok(/flex:\s*1/.test(m[0]), 'body.source #srcCol 须含 flex:1（高度撑满）');
+  assert.ok(/min-height:\s*0/.test(m[0]), 'body.source #srcCol 须含 min-height:0（允许收缩，textarea 内部滚动）');
+});
 
 console.log('== ③ 稳定性压力 ==');
 

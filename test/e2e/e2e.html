@@ -228,9 +228,11 @@ kbd {
   background: var(--vscode-input-background, #fff); color: var(--vscode-input-foreground, #1e293b);
 }
 /* 纯源码模式：源码区按页面纸张宽度居中，与所见即所得视觉一致（分屏模式保持半宽自适应） */
+/* flex:1 + min-height:0：#srcCol 必须撑满 #sourceArea 高度——缺了它高度按内容塌缩（textarea 默认 2 行高的矮条 bug） */
 body.source #srcCol {
   max-width: var(--page-width, 760px); width: calc(100% - 32px);
-  margin: 24px auto 60px; display: flex; flex-direction: column; min-width: 0;
+  flex: 1; min-height: 0;
+  margin: 24px auto; display: flex; flex-direction: column; min-width: 0;
   background: var(--vscode-editor-background, #fff);
   border-radius: 3px; box-shadow: 0 2px 12px rgba(0,0,0,.14); overflow: hidden;
 }
@@ -249,7 +251,7 @@ body.source #srcTextarea { background: transparent; padding: 32px 40px; }
 #preview table { width: 100%; }
 body.split #editorWrap { display: none; }
 body.split #sourceArea { display: flex; flex-direction: row; }
-body.split #srcCol { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+body.split #srcCol { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 body.split #preview { display: block; }
 body.source #editorWrap { display: none; }
 body.source #sourceArea { display: flex; }
@@ -2130,7 +2132,7 @@ window.addEventListener = function (t, fn, o) { if (t === 'message') { window.__
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.6.0</span>'
+      '<span class="seg">Markdown Word v1.6.2</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.3（2026-08-23）
+
+修复用户报障：**源码模式宽度已修好，但高度仍只有两三行高**（1.6.2 修复了宽度维度，漏了高度维度）。
+
+- **根因**：`#srcCol` 在 `#sourceArea`（flex 列容器）中没有 `flex:1`，高度按内容收缩——`textarea` 元素默认 `rows=2`，于是整个源码纸张只剩两行高的矮条。宽度（`width/max-width`）与高度（flex 主轴拉伸）是两个独立布局维度，1.6.2 只修了宽度所在的行容器塌缩
+- **修复**：`body.source #srcCol` 加 `flex:1; min-height:0`（撑满可用高度，textarea 内部滚动），下边距 60px 收窄为 24px 还给编辑区；`body.split #srcCol` 补 `min-height:0` 加固。CDP 实测三视口：源码列高 641/689（93% 主区）、textarea 617px、分屏两列满高，全部 PASS + 截图复核
+- **防回归**：`cdp-srcmode.js` 断言从仅宽度扩为**宽×高双向**（源码列高 ≥ 主区 85%、textarea ≥ 75%、分屏两列 ≥ 85%）；jsdom CSS 守卫新增 `body.source #srcCol` 必须含 `flex:1` + `min-height:0`（189 项全过）
+- 坑位：上一轮截图视觉模型称"源码内容完整可读"实为幻觉（textarea 只有 2 行高）——布局结论必须以 `getBoundingClientRect` 数值为准，视觉模型仅作辅助
+
 ## 1.6.2（2026-08-23）
 
 修复用户报障：**源码模式下编辑区只有很窄一块**（与"源码尺寸应与页面模式一致"的要求不符）。

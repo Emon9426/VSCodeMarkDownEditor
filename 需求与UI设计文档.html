@@ -1523,7 +1523,7 @@
       <tr><td colspan="5" style="background:#f8fafc;font-weight:700;color:#475569">P2 · 远期</td></tr>
       <tr><td>P2</td><td>图床上传（PicGo / S3）、docx 导出、打包文档 zip、AI 指令库与 AI 图表、自定义 CSS 主题、斜杠菜单自定义项、表格列宽记忆、网页版 Remote 支持</td><td><span class="badge b-p2">P2</span></td><td>各模块 P2 标注处</td><td><span class="st st-todo">未开始</span></td></tr>
     </table>
-    <p class="fig-note" style="margin-top:12px">「详述位置」为可点击锚点。状态定义（v1.6 起）：<b>已开发待验收</b> = 代码完成且自动化测试通过，待真机人工验收。<b>2026-08-23（v1.6.2 修复批次）：修复用户报障"源码模式编辑区只有很窄一块"——根因为 #sourceArea 在 flex 行容器中缺 flex:1（原写在从未挂载的 .grow 类上），修复后源码/分屏纸张宽度与页面模式一致（CDP 三视口实测 + 截图确认）；测试体系复盘补上模式布局断言（188 项，新增 cdp-srcmode.js 模式宽度 e2e 工具）。v1.6.1 为完整测试批次（窄视口 CSS 响应式修复 + 8 档视口验证）。剩余待办仅：真机验收、原生 PDF 生成（现为打印路径）、PDF 字体内嵌、代码块行号。vsix v1.6.2</b>。下次更新本表时请同步修改此行汇总。</p>
+    <p class="fig-note" style="margin-top:12px">「详述位置」为可点击锚点。状态定义（v1.6 起）：<b>已开发待验收</b> = 代码完成且自动化测试通过，待真机人工验收。<b>2026-08-23（v1.6.3 修复批次）：源码模式尺寸问题完整闭环——v1.6.2 修宽度塌缩（#sourceArea 缺 flex:1），v1.6.3 修高度塌缩（#srcCol 缺 flex:1，textarea 默认 2 行高矮条）；现源码/分屏模式宽高均与页面模式一致并撑满主区（CDP 三视口宽×高双向断言 + 截图确认），测试 189 项全过。剩余待办仅：真机验收、原生 PDF 生成（现为打印路径）、PDF 字体内嵌、代码块行号。vsix v1.6.3</b>。下次更新本表时请同步修改此行汇总。</p>
   </div>
 </section>
 
