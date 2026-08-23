@@ -16,6 +16,8 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 
 **磁盘上永远是标准 Markdown** —— 可视化编辑零语法妥协，往返保真。
 
+📧 作者：[emonzhang3438@outlook.com](mailto:emonzhang3438@outlook.com) · 有任何 Bug 或需求欢迎提出
+
 简体中文 · [English](#markdown-word-english)
 
 </div>
@@ -54,6 +56,7 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 - [设置项](#设置项)
 - [已知限制](#已知限制)
 - [开发与测试](#开发与测试)
+- [作者与反馈](#作者与反馈)
 - [许可证](#许可证)
 
 ## 安装
@@ -296,6 +299,14 @@ README 截图由流水线自动生成：`node scripts/build-shots.js` 生成演�
 需求规格、UI 设计与实现进度跟踪见 [需求与UI设计文档.html](需求与UI设计文档.html)（浏览器打开评审），
 版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 
+## 作者与反馈
+
+📧 **作者**：[emonzhang3438@outlook.com](mailto:emonzhang3438@outlook.com)
+
+- 发现 **Bug**：请邮件告知（附上复现步骤与截图更佳），或直接提 [Issue](https://github.com/Emon9426/VSCodeMarkDownEditor/issues)；
+- 有 **新需求 / 功能建议**：同样欢迎提出——本项目的需求文档（[需求与UI设计文档.html](需求与UI设计文档.html)）会持续收录与跟踪每一项反馈；
+- 也欢迎 PR 共同完善。
+
 ## 许可证
 
 MIT
@@ -318,6 +329,8 @@ page setup, and a bilingual (Chinese/English) UI.
 [![Version](https://img.shields.io/badge/version-1.7.1-8A2BE2)](CHANGELOG.md)
 
 **The file on disk is always plain, standard Markdown** — visual editing with zero syntax compromise, lossless round-trip.
+
+📧 Author: [emonzhang3438@outlook.com](mailto:emonzhang3438@outlook.com) · Bug reports and feature requests are always welcome
 
 [简体中文](#markdown-word) · English
 
@@ -357,6 +370,7 @@ Latin and CJK text each get their own font (Segoe UI × Microsoft YaHei); code a
 - [Settings](#settings)
 - [Known Limitations](#known-limitations)
 - [Development & Testing](#development--testing)
+- [Author & Feedback](#author--feedback)
 - [License](#license)
 
 ## Installation
@@ -599,6 +613,14 @@ then with Edge headless (CDP port 9333) run `node scripts/take-shots.js` to capt
 
 The full requirements spec, UI design and progress tracker live in [需求与UI设计文档.html](需求与UI设计文档.html) (open in a browser);
 release history in [CHANGELOG.md](CHANGELOG.md).
+
+## Author & Feedback
+
+📧 **Author**: [emonzhang3438@outlook.com](mailto:emonzhang3438@outlook.com)
+
+- Found a **bug**? Email the author (reproduction steps and screenshots help a lot), or simply open an [Issue](https://github.com/Emon9426/VSCodeMarkDownEditor/issues);
+- Have a **feature request**? Equally welcome — every piece of feedback is tracked in the project's living requirements spec ([需求与UI设计文档.html](需求与UI设计文档.html));
+- Pull requests are appreciated too.
 
 ## License
 
