@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.3（2026-08-23）
+
+修复用户报障：**“在编辑视图中，依旧没有图片的显示”**——根因是 webview 安全配置：
+
+- **`localResourceRoots` 缺少文档所在目录**：webview 只允许加载扩展目录内的本地资源，`asWebviewUri` 为文档旁的图片生成的 URL 在加载时被宿主静默拦截——**任何模式下编辑视图的本地图片一律不显示**（jsdom/stub 测试无法覆盖此层，属 VS Code 宿主安全行为，此前 F06 从未真机验收所以未暴露）
+- 修复：资源根白名单加入文档所在目录（`vscode.Uri.joinPath(document.uri, '..')`）
+- **真机验证通过**：打包安装后在真实 VS Code 打开含 `![扩展图标](logo.png)` 的文档，编辑视图中图片完整渲染（test/e2e/img-test/ 作为回归样例入库）
+- 测试 207 项（+2）：localResourceRoots 含文档目录断言、resolveImages→imageMap 映射链路（相对路径/`./` 前缀/外链过滤）
+
 ## 1.7.2（2026-08-23）
 
 修复用户报障：**"在 Markdown 文档中粘贴图片的功能尚未实现"**——排查发现功能主体早已存在（粘贴 → `saveImage` → 落盘 `./images/` → 回传插入），但存在两个真实断点：

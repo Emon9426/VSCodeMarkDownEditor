@@ -127,9 +127,37 @@ function makePanel(docText) {
     onDidReceiveMessage: l => { listeners.push(l); return { dispose() {} }; }
   };
   const panel = { webview: webview, onDidChangeViewState: () => ({ dispose() {} }), onDidDispose: cb => { panel._dispose = cb; return { dispose() {} }; } };
-  const doc = { uri: { toString: () => 'file:///a.md' }, getText: () => docText, lineCount: docText.split('\n').length, fileName: 'a.md' };
+  const doc = { uri: { toString: () => 'file:///a.md', scheme: 'file', path: '/a.md' }, getText: () => docText, lineCount: docText.split('\n').length, fileName: 'a.md' };
   return { panel: panel, doc: doc };
 }
+
+test('webview 资源根包含文档目录（localResourceRoots——缺失会导致图片全部不显示）', () => {
+  const provider = vscode._calls.providers[0].provider;
+  const mk = makePanel('# 文档\n');
+  provider.resolveCustomTextEditor(mk.doc, mk.panel, {});
+  const opts = mk.panel.webview.options;
+  assert.ok(opts && opts.enableScripts, 'enableScripts');
+  const paths = ((opts && opts.localResourceRoots) || []).map(r => String(r.path || ''));
+  // 文档目录必须在白名单（stub Uri.joinPath 拼接为 /a.md/..，真实 VS Code 归一化为 /）
+  assert.ok(paths.indexOf('/a.md/..') !== -1 || paths.some(p => p === '/' || p === ''),
+    'localResourceRoots 含文档所在目录: ' + JSON.stringify(paths));
+});
+
+test('resolveImages：相对路径 → imageMap 回传（asWebviewUri）', async () => {
+  const provider = vscode._calls.providers[0].provider;
+  const mk = makePanel('# 文档\n');
+  provider.resolveCustomTextEditor(mk.doc, mk.panel, {});
+  // async 测试共享外层 posted/listeners 会被后续测试的同步段重置——先捕获局部引用
+  const p = posted, fire = listeners[0];
+  fire({ type: 'resolveImages', paths: ['images/a.png', './images/b.JPG', 'https://x/c.png'] });
+  await new Promise(r => setTimeout(r, 10));
+  const msg = p.find(m => m.type === 'imageMap');
+  assert.ok(msg, '回传 imageMap');
+  const map = msg.map || {};
+  assert.ok(map['images/a.png'] && /^webview:\/\//.test(map['images/a.png']), '相对路径映射为 webviewUri');
+  assert.ok(map['./images/b.JPG'], './ 前缀路径命中（键保持原样）');
+  assert.ok(!map['https://x/c.png'], '外链不进 map（webview 端直接 src）');
+});
 
 test('resolveCustomEditor：ready 消息回发 init（webview 收到后才会 sendOutline）', () => {
   const provider = vscode._calls.providers[0].provider;

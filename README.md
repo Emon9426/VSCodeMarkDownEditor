@@ -12,7 +12,7 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](#开发与测试)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#许可证)
-[![Version](https://img.shields.io/badge/version-1.7.2-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.3-8A2BE2)](CHANGELOG.md)
 
 **磁盘上永远是标准 Markdown** —— 可视化编辑零语法妥协，往返保真。
 
@@ -64,7 +64,7 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 **方式一：VSIX 安装（推荐）**
 
 ```bash
-code --install-extension wysiwyg-markdown-editor-1.7.2.vsix
+code --install-extension wysiwyg-markdown-editor-1.7.3.vsix
 ```
 
 或在扩展面板 → `···` → **从 VSIX 安装...**。
@@ -326,7 +326,7 @@ page setup, and a bilingual (Chinese/English) UI.
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](#development--testing)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
-[![Version](https://img.shields.io/badge/version-1.7.2-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.3-8A2BE2)](CHANGELOG.md)
 
 **The file on disk is always plain, standard Markdown** — visual editing with zero syntax compromise, lossless round-trip.
 
@@ -378,7 +378,7 @@ Latin and CJK text each get their own font (Segoe UI × Microsoft YaHei); code a
 **Option 1: Install from VSIX (recommended)**
 
 ```bash
-code --install-extension wysiwyg-markdown-editor-1.7.2.vsix
+code --install-extension wysiwyg-markdown-editor-1.7.3.vsix
 ```
 
 Or via the Extensions panel → `···` → **Install from VSIX...**.

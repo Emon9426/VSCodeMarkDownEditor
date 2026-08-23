@@ -106,7 +106,12 @@ class MarkdownWordEditorProvider {
 
   resolveCustomTextEditor(document, webviewPanel, _token) {
     const webview = webviewPanel.webview;
-    webview.options = { enableScripts: true, localResourceRoots: [this.context.extensionUri] };
+    // localResourceRoots 必须包含文档所在目录：图片等本地资源经 asWebviewUri 加载时，
+    // 宿主要求其物理路径在白名单内——缺了文档目录会导致编辑视图图片全部不显示（2026-08-23 用户报障）
+    webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this.context.extensionUri, vscode.Uri.joinPath(document.uri, '..')]
+    };
     this.activeWebview = webview;
     webviewPanel.onDidChangeViewState(e => {
       if (e.webviewPanel.active) { this.activeWebview = e.webviewPanel.webview; }
