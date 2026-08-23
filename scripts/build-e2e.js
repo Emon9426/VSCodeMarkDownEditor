@@ -31,7 +31,9 @@ window.__onMessage = null;
 window.acquireVsCodeApi = function () {
   return { postMessage: function (m) { window.__posted.push(m); }, setState: function(){}, getState: function(){ return {}; } };
 };
-window.addEventListener = function (t, fn) { if (t === 'message') { window.__onMessage = fn; } };
+// 包装而非覆盖：钩住 message 供测试注入，同时保留原生监听（resize/selectionchange 等行为不失真）
+const __nativeAdd = window.addEventListener.bind(window);
+window.addEventListener = function (t, fn, o) { if (t === 'message') { window.__onMessage = fn; } __nativeAdd(t, fn, o); };
 </script>
 <script>${read('src/markdown/highlight.js')}</script>
 <script>${read('src/markdown/math.js')}</script>

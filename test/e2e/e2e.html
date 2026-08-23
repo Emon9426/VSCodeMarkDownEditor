@@ -212,9 +212,9 @@ kbd {
 /* ============ 源码 / 分屏模式 ============ */
 /* 纸张宽度变量由 JS 设置在 #main 上：所见即所得纸张与源码模式纸张共用，保证两种模式尺寸一致 */
 #editor { max-width: var(--page-width, 760px); }
-#sourceArea { display: none; flex-direction: column; min-width: 0; }
-#sourceArea.active { display: flex; }
-#sourceArea.grow { flex: 1; }
+/* flex:1 必须在基础规则上：#main 是 flex 行容器，缺了它 sourceArea 会按内容塌缩（源码模式窄条 bug）；
+   display:none 时不参与布局，wysiwyg 模式下无副作用 */
+#sourceArea { display: none; flex: 1; flex-direction: column; min-width: 0; }
 #sourceHint {
   flex: none; display: flex; align-items: center; gap: 10px; padding: 4px 16px; font-size: 11px;
   color: var(--vscode-descriptionForeground, #64748b); background: rgba(127,127,127,.07);
@@ -508,7 +508,9 @@ window.__onMessage = null;
 window.acquireVsCodeApi = function () {
   return { postMessage: function (m) { window.__posted.push(m); }, setState: function(){}, getState: function(){ return {}; } };
 };
-window.addEventListener = function (t, fn) { if (t === 'message') { window.__onMessage = fn; } };
+// 包装而非覆盖：钩住 message 供测试注入，同时保留原生监听（resize/selectionchange 等行为不失真）
+const __nativeAdd = window.addEventListener.bind(window);
+window.addEventListener = function (t, fn, o) { if (t === 'message') { window.__onMessage = fn; } __nativeAdd(t, fn, o); };
 </script>
 <script>/**
  * Markdown Word — 轻量语法高亮器（UMD：Node 与 Webview 双端）

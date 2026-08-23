@@ -146,6 +146,15 @@ test('Ribbon 工具行横向滚动（不折行）', () => {
 test('编辑区窄屏 padding 缩小', () => {
   assert.ok(/@media[\s\S]*?max-width[\s\S]*?#editor[\s\S]*?padding/.test(cssCode), '窄屏编辑区 padding 调整');
 });
+test('源码/分屏模式纸张宽度与页面模式一致（#sourceArea 必须声明 flex:1）', () => {
+  // 回归守卫：#main 是 flex 行容器，#sourceArea 缺 flex:1 会按内容塌缩成窄条
+  // （2026-08-23 用户报障：源码模式只有一小块。根因是 flex:1 写在了从未被 JS 挂载的 .grow 类上）
+  const idx = cssCode.indexOf('#sourceArea {');
+  assert.ok(idx !== -1, '#sourceArea 基础规则存在');
+  const seg = cssCode.slice(idx, cssCode.indexOf('}', idx));
+  assert.ok(/flex:\s*1/.test(seg), '#sourceArea 基础规则须含 flex:1（否则 flex 行容器中塌缩）');
+  assert.ok(cssCode.indexOf('var(--page-width') !== -1, '源码纸张宽度吃 --page-width 变量');
+});
 
 console.log('== ③ 稳定性压力 ==');
 
