@@ -203,7 +203,7 @@ test('insertDrawio：创建 .drawio.svg 模板并回传引用（v1.7.1）', asyn
   assert.ok(msg && !msg.error, '回传 drawioInserted');
   assert.ok(/diagrams\/diagram-\d+\.drawio\.svg$/.test(msg.rel), '相对路径正确: ' + msg.rel);
   assert.ok(/^webview:\/\//.test(msg.src), 'webviewUri 回传');
-  const written = Object.keys(vscode.workspace.fs.written);
+  const written = Object.keys(vscode.workspace.fs.written).filter(p => p.indexOf('/diagrams/') !== -1);
   assert.strictEqual(written.length, 1, '写入一个文件');
   const content = String(vscode.workspace.fs.written[written[0]]);
   assert.ok(content.indexOf('<svg') === 0 && content.indexOf('mxGraphModel') !== -1, 'SVG 内嵌 mxGraphModel（vscode-drawio 可编辑）');
@@ -220,6 +220,23 @@ test('showOutline：转发执行 workbench.viewExtension.markdownWord 聚焦大�
   await new Promise(r => setTimeout(r, 10));
   vscode.commands.executeCommand = orig;
   assert.ok(executed.indexOf('workbench.viewExtension.markdownWord') !== -1, '聚焦 Markdown Word 容器');
+});
+
+test('saveImage：粘贴图片 → 写盘 images/ + 回传 relPath/webSrc（F06 全链路）', async () => {
+  const provider = vscode._calls.providers[0].provider;
+  const mk = makePanel('# 文档\n');
+  provider.resolveCustomTextEditor(mk.doc, mk.panel, {});
+  listeners[0]({ type: 'saveImage', id: 'img9', data: 'data:image/png;base64,aGVsbG8=', ext: 'png' });
+  await new Promise(r => setTimeout(r, 30));
+  const written = Object.keys(vscode.workspace.fs.written).filter(p => p.indexOf('/images/') !== -1);
+  assert.strictEqual(written.length, 1, '写入一个图片文件');
+  assert.ok(written[0].indexOf('/images/') !== -1 && /\.png$/.test(written[0]), '落在 images/ 且扩展名 png: ' + written[0]);
+  const buf = vscode.workspace.fs.written[written[0]];
+  assert.ok(Buffer.isBuffer(buf) && buf.toString() === 'hello', 'base64 正确解码写盘');
+  const msg = posted.find(m => m.type === 'imageSaved' && m.id === 'img9');
+  assert.ok(msg && !msg.error, '回传 imageSaved');
+  assert.ok(/images\/[^/]+\.png$/.test(msg.relPath), 'relPath 相对路径: ' + msg.relPath);
+  assert.ok(/^webview:\/\//.test(msg.webSrc), 'webviewUri 可显示');
 });
 
 Promise.all(pending).then(() => {

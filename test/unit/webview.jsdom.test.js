@@ -747,6 +747,55 @@ test('F10 Mermaid：流程图 SVG 渲染 + 序列化保留', async () => {
   assert.ok(md.indexOf('```mermaid') !== -1 && md.indexOf('A[开始]') !== -1, '写盘为 mermaid 代码块');
 });
 
+test('F06 粘贴图片：所见即所得 → saveImage 消息 + imageSaved 回传插入 img', async () => {
+  win.__onMessage({ data: { type: 'init', text: '粘贴目标。\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  const f = new win.File(['fake-png'], 'shot.png', { type: 'image/png' });
+  const ev = new win.Event('paste', { bubbles: true, cancelable: true });
+  ev.clipboardData = { items: [{ kind: 'file', type: 'image/png', getAsFile: () => f }], getData: () => '', files: [] };
+  q('#editor').dispatchEvent(ev);
+  await wait(30); // FileReader 异步读取
+  const msg = postMessages().filter(m => m.type === 'saveImage').pop();
+  assert.ok(msg, 'saveImage 已发送');
+  assert.strictEqual(msg.ext, 'png', '扩展名取自文件名');
+  win.__onMessage({ data: { type: 'imageSaved', id: msg.id, relPath: 'images/a-1.png', webSrc: 'webview://img1' } });
+  assert.ok(q('#editor img[data-src="images/a-1.png"]'), 'img 已插入并挂 data-src');
+});
+
+test('F06 粘贴图片：源码模式 textarea 同样落盘并插入 ![]()（修复：此前源码模式无反应）', async () => {
+  win.__onMessage({ data: { type: 'init', text: '# 文档\n\n段落。\n', settings: {} } });
+  win.__onMessage({ data: { type: 'command', cmd: 'toggleMode' } }); // wysiwyg → source
+  const ta = q('#srcTextarea');
+  const f = new win.File(['fake-png'], 'y.png', { type: 'image/png' });
+  const ev = new win.Event('paste', { bubbles: true, cancelable: true });
+  ev.clipboardData = { items: [{ kind: 'file', type: 'image/png', getAsFile: () => f }], getData: () => '', files: [] };
+  ta.dispatchEvent(ev);
+  await wait(30);
+  const msg = postMessages().filter(m => m.type === 'saveImage').pop();
+  assert.ok(msg, '源码模式也发送 saveImage');
+  win.__onMessage({ data: { type: 'imageSaved', id: msg.id, relPath: 'images/b-1.png', webSrc: 'wv://b' } });
+  assert.ok(ta.value.indexOf('![](images/b-1.png)') !== -1, 'textarea 光标处插入 ![]() 语法');
+  win.__onMessage({ data: { type: 'command', cmd: 'toggleMode' } }); // source → split
+  win.__onMessage({ data: { type: 'command', cmd: 'toggleMode' } }); // split → wysiwyg（恢复后续测试状态）
+});
+
+test('F06 粘贴图片：文件管理器复制（items 无类型、files 兜底命中扩展名）', async () => {
+  win.__onMessage({ data: { type: 'init', text: '粘贴目标。\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  const f = new win.File(['fake-jpg'], 'pic.JPG', { type: '' }); // 文件管理器复制时 type 可能为空
+  const ev = new win.Event('paste', { bubbles: true, cancelable: true });
+  ev.clipboardData = { items: [], getData: () => '', files: [f] };
+  q('#editor').dispatchEvent(ev);
+  await wait(30);
+  const msg = postMessages().filter(m => m.type === 'saveImage').pop();
+  assert.ok(msg, 'files 兜底命中');
+  assert.ok(/^jpe?g$/i.test(msg.ext), 'ext 按文件名扩展识别: ' + msg.ext);
+});
+
 chain.then(() => {
   console.log('\n结果: ' + (failed ? failed + ' 项失败' : '全部通过'));
   if (failed) { process.exitCode = 1; }

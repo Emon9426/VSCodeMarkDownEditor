@@ -384,7 +384,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.7.1</span>'
+      '<span class="seg">Markdown Word v1.7.2</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -2379,22 +2379,39 @@
   }
 
   // ================= 粘贴（图片落盘 / md 源码渲染 / HTML 清洗） =================
+  // 从剪贴板数据收集图片文件：① items 条目（截图 / 网页复制图像）；② files 列表
+  // （文件管理器复制图片文件时 items 的 type 可能为空，须按 files 的 type/扩展名兜底）
+  function collectImageFiles(cd) {
+    const out = [];
+    const items = (cd && cd.items) || [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it && it.kind !== 'string' && it.type && it.type.indexOf('image/') === 0) {
+        const f = typeof it.getAsFile === 'function' ? it.getAsFile() : null;
+        if (f) { out.push(f); }
+      }
+    }
+    if (!out.length) {
+      const files = (cd && cd.files) || [];
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (f && (String(f.type || '').indexOf('image/') === 0 || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(String(f.name || '')))) { out.push(f); }
+      }
+    }
+    return out;
+  }
   function onPaste(e) {
     if (mode !== 'wysiwyg') { return; }
     const cd = e.clipboardData;
     if (!cd) { return; }
     const ctx = caretContext();
     // 图片（F06）：代码块内不允许（序列化不产生引用，会留下孤儿文件误导用户）
-    const items = cd.items || [];
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type && items[i].type.indexOf('image/') === 0) {
-        const f = items[i].getAsFile();
-        if (f) {
-          e.preventDefault();
-          if (ctx.inPre) { toast('代码块内不能插入图片，请先移出代码块'); return; }
-          sendImageFile(f); return;
-        }
-      }
+    const imgFiles = collectImageFiles(cd);
+    if (imgFiles.length) {
+      e.preventDefault();
+      if (ctx.inPre) { toast('代码块内不能插入图片，请先移出代码块'); return; }
+      imgFiles.forEach(sendImageFile);
+      return;
     }
     const text = cd.getData('text/plain');
     const html = cd.getData('text/html');
@@ -2493,6 +2510,17 @@
     }
     scheduleSave();
   }
+  // 源码/分屏模式：textarea 内粘贴图片同样落盘（onImageSaved 已按模式分流——源码插 ![]() 语法）
+  function onTextareaPaste(e) {
+    const cd = e.clipboardData;
+    if (!cd) { return; }
+    const imgFiles = collectImageFiles(cd);
+    if (imgFiles.length) {
+      e.preventDefault();
+      imgFiles.forEach(sendImageFile);
+    }
+  }
+
   function onDrop(e) {
     if (mode !== 'wysiwyg') { return; }
     const files = e.dataTransfer && e.dataTransfer.files;
@@ -2629,6 +2657,7 @@
       if (mode === 'wysiwyg') { updateTableBar(); updateFloatBar(); updateCrumb(); }
     });
     // 源码 / 分屏
+    srcTextarea.addEventListener('paste', onTextareaPaste);
     srcTextarea.addEventListener('input', () => {
       scheduleSave();
       if (mode === 'split') {
