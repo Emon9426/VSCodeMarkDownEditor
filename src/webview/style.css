@@ -454,3 +454,32 @@ sup.md-fn, #editor .md-fn-def sup, #preview .md-fn-def sup {
 .crumb-item { cursor: pointer; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
 .crumb-item:hover { background: rgba(127,127,127,.15); }
 .crumb-sep { opacity: .5; }
+
+/* ============ F10：公式（自研 LaTeX 子集渲染） ============ */
+.md-math {
+  margin: 10px 0; padding: 8px 14px; text-align: center; font-family: 'Cambria Math', Georgia, 'Times New Roman', serif;
+  font-size: 1.06em; cursor: pointer; border-radius: 6px;
+}
+.md-math:hover { background: rgba(127,127,127,.07); }
+.md-imath { font-family: 'Cambria Math', Georgia, serif; }
+.mfrac { display: inline-flex; flex-direction: column; vertical-align: -0.7em; text-align: center; margin: 0 2px; line-height: 1.15; }
+.mfrac .mnum { border-bottom: 1px solid currentColor; padding: 0 4px; }
+.mfrac .mden { padding: 0 4px; }
+.msqrt .mrad { border-top: 1px solid currentColor; padding: 0 3px; }
+.msup { font-size: .72em; vertical-align: super; }
+.msub { font-size: .72em; vertical-align: sub; }
+.mover { text-decoration: overline; }
+.mvec { position: relative; }
+.mvec::after { content: '→'; position: absolute; top: -0.85em; left: 50%; transform: translateX(-50%); font-size: .75em; }
+.mbar { text-decoration: overline; }
+.mtext { font-style: normal; }
+.md-math .mtext { font-family: inherit; }
+
+/* ============ F10：Mermaid 流程图（自研子集 → SVG） ============ */
+.md-mermaid {
+  margin: 12px 0; padding: 12px; text-align: center; border: 1px dashed var(--vscode-panel-border, #cbd5e1);
+  border-radius: 8px; cursor: pointer; overflow-x: auto; background: var(--vscode-editor-background, #fff);
+}
+.md-mermaid:hover { border-color: var(--vscode-focusBorder, #4f46e5); }
+.md-mermaid svg text { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
+#preview .md-mermaid { border-style: solid; cursor: default; }

@@ -115,6 +115,8 @@ class MarkdownWordEditorProvider {
     const uris = {
       core: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'markdown', 'core.js')),
       hljs: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'markdown', 'highlight.js')),
+      math: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'markdown', 'math.js')),
+      mmd: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'markdown', 'mermaid.js')),
       main: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'webview', 'main.js')),
       style: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'webview', 'style.css'))
     };
@@ -202,6 +204,18 @@ class MarkdownWordEditorProvider {
           this.handleAi(webview, msg).catch(err => {
             webview.postMessage({ type: 'aiError', id: msg.id, error: String(err && err.message || err) });
           });
+          break;
+        }
+        case 'openDrawio': {
+          // Draw.io 集成层：以 .drawio.svg/.drawio.png 引用的图，交给 vscode-drawio（或默认编辑器）打开
+          const fileUri = this.resolveRelative(document.uri, msg.rel);
+          if (fileUri) {
+            vscode.commands.executeCommand('vscode.open', fileUri, { viewColumn: vscode.ViewColumn.Beside })
+              .then(undefined, () => {
+                vscode.window.showInformationMessage(
+                  'Markdown Word: 该流程图文件已尝试用默认编辑器打开。建议安装开源扩展 vscode-drawio（hediet.vscode-drawio）以获得完整 Draw.io 编辑体验。');
+              });
+          }
           break;
         }
         case 'openExternal': {
@@ -316,6 +330,8 @@ class MarkdownWordEditorProvider {
       '</head><body>',
       '<div id="app"></div>',
       '<script src="' + uris.hljs + '"></script>',
+      '<script src="' + uris.math + '"></script>',
+      '<script src="' + uris.mmd + '"></script>',
       '<script src="' + uris.core + '"></script>',
       '<script src="' + uris.main + '"></script>',
       '</body></html>'

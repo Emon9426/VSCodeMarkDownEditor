@@ -386,7 +386,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.5.0</span>'
+      '<span class="seg">Markdown Word v1.6.0</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -1676,7 +1676,16 @@
     }
     if (onImg) {
       items.push(null);
-      items.push(['🖼', '图片：编辑链接（替换 src）', () => toast('选中图片后删除重插，或切源码模式修改路径')]);
+      const img = closestTag('img');
+      const ds = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
+      if (/\.drawio\.(svg|png)$/i.test(ds)) {
+        items.push(['⬡', lang === 'zh' ? '用 Draw.io 编辑（需 vscode-drawio 插件）' : 'Edit with Draw.io (requires vscode-drawio)', () => {
+          vscode.postMessage({ type: 'openDrawio', rel: ds });
+          toast(lang === 'zh' ? '已在并排编辑器打开（建议安装 vscode-drawio 扩展）' : 'Opened beside (vscode-drawio recommended)');
+        }]);
+      } else {
+        items.push(['🖼', '图片：编辑链接（替换 src）', () => toast('选中图片后删除重插，或切源码模式修改路径')]);
+      }
     }
     menu.innerHTML = '';
     items.forEach(it => {
@@ -1694,8 +1703,23 @@
     menu.style.left = Math.min(x, window.innerWidth - 220) + 'px';
     menu.style.top = Math.min(y, window.innerHeight - 40 * items.length - 20) + 'px';
   }
-  function copySelectionAsMd() {
-    const b = topBlock();
+  // F10：公式 / 流程图 源码编辑对话框（textarea）
+  function editSourceDialog(title, src, onOk) {
+    dialog(title,
+      '<div class="frow" style="align-items:stretch"><label style="align-self:flex-start;padding-top:6px">源码</label>' +
+      '<textarea data-field="src" style="flex:1;min-height:130px;border:1px solid var(--vscode-input-border,#cbd5e1);border-radius:6px;padding:8px;background:var(--vscode-input-background,#fff);color:var(--vscode-input-foreground,inherit);font-family:Consolas,monospace;font-size:12.5px;outline:none;resize:vertical"></textarea></div>',
+      [
+        { text: T('cancel'), closeOnly: true },
+        { text: T('ok'), primary: true, validate: v => !!String(v.src || '').trim() }
+      ]
+    ).then(v => {
+      if (v && onOk) { onOk(String(v.src).trim()); }
+    });
+    const ta = $('.dlg [data-field="src"]');
+    if (ta) { ta.value = src || ''; ta.focus(); }
+  }
+
+  function copySelectionAsMd() {    const b = topBlock();
     if (!b) { return; }
     const holder = document.createElement('div');
     holder.appendChild(b.cloneNode(true));
@@ -2536,6 +2560,25 @@
         scheduleSave();
       }
       updateTableBar(); updateStatus();
+    });
+    // F10：双击公式 / 流程图 → 源码编辑对话框
+    editor.addEventListener('dblclick', e => {
+      const math = e.target.closest('.md-math');
+      const mm = e.target.closest('.md-mermaid');
+      if (math) {
+        editSourceDialog(lang === 'zh' ? '编辑公式（LaTeX）' : 'Edit formula (LaTeX)', math.getAttribute('data-tex'), tex => {
+          math.setAttribute('data-tex', tex);
+          math.innerHTML = (typeof MdMath !== 'undefined') ? MdMath.render(tex) : MD.escapeHtml(tex);
+          scheduleSave();
+        });
+      } else if (mm) {
+        editSourceDialog(lang === 'zh' ? '编辑流程图（Mermaid 子集：graph TD/LR）' : 'Edit diagram (Mermaid subset)', mm.getAttribute('data-code'), code => {
+          mm.setAttribute('data-code', code);
+          const svg = (typeof MdMm !== 'undefined') ? MdMm.render(code) : null;
+          mm.innerHTML = svg || ('<pre style="padding:10px;color:#b91c1c">无法渲染（不支持语法或格式错误），已保留源码</pre>');
+          scheduleSave();
+        });
+      }
     });
     editor.addEventListener('keyup', updateStatus);
     document.addEventListener('selectionchange', () => {

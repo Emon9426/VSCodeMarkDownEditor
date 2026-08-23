@@ -11,6 +11,8 @@ const { JSDOM } = require('jsdom');
 
 const coreCode = fs.readFileSync(path.join(__dirname, '../../src/markdown/core.js'), 'utf8');
 const hlCode = fs.readFileSync(path.join(__dirname, '../../src/markdown/highlight.js'), 'utf8');
+const mathCode = fs.readFileSync(path.join(__dirname, '../../src/markdown/math.js'), 'utf8');
+const mmCode = fs.readFileSync(path.join(__dirname, '../../src/markdown/mermaid.js'), 'utf8');
 const mainCode = fs.readFileSync(path.join(__dirname, '../../src/webview/main.js'), 'utf8');
 
 const html = [
@@ -25,6 +27,8 @@ const html = [
   'window.addEventListener = function (t, fn) { if (t === "message") { window.__onMessage = fn; } else { EventTarget.prototype.addEventListener.call(window, t, fn); } };',
   '</script>',
   '<script>' + hlCode + '</script>',
+  '<script>' + mathCode + '</script>',
+  '<script>' + mmCode + '</script>',
   '<script>' + coreCode + '</script>',
   '<script>' + mainCode + '</script>',
   '</body></html>'
@@ -716,6 +720,31 @@ test('智能粘贴：Word mso-list 段落还原为列表', () => {
   assert.ok(lists.length >= 1, '列表已还原');
   const sub = qa('#editor ul ul li');
   assert.ok(sub.length >= 1 && sub[0].textContent === '子项', '嵌套子项：' + (sub[0] ? sub[0].textContent : '无'));
+});
+
+// ================= v1.6.0 阻塞解阻回归 =================
+test('F10 公式：块级/行内公式在编辑区渲染 + 双击编辑对话框打开', () => {
+  win.__onMessage({ data: { type: 'init', text: '# 文档\n\n$$E = mc^2$$\n\n值 $x^2$ 与文字。\n', settings: {} } });
+  const block = q('#editor .md-math');
+  assert.ok(block, '块级公式渲染');
+  assert.strictEqual(block.getAttribute('data-tex'), 'E = mc^2');
+  assert.ok(q('#editor .md-imath'), '行内公式渲染');
+  // 双击公式 → 源码对话框
+  block.dispatchEvent(new win.MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+  const ta = q('.dlg [data-field="src"]');
+  assert.ok(ta, '源码编辑对话框打开');
+  assert.strictEqual(ta.value, 'E = mc^2', '预填源码');
+  click(qa('.dlg .btn')[0]); // 取消关闭
+});
+test('F10 Mermaid：流程图 SVG 渲染 + 序列化保留', async () => {
+  win.__onMessage({ data: { type: 'init', text: '```mermaid\ngraph TD\nA[开始] --> B{判断}\nB -->|是| C[结束]\n```\n', settings: {} } });
+  const mm = q('#editor .md-mermaid');
+  assert.ok(mm, 'mermaid 块渲染');
+  assert.ok(mm.innerHTML.indexOf('<svg') !== -1, 'SVG 输出');
+  assert.ok(mm.getAttribute('data-code').indexOf('graph TD') !== -1, '源码保留在 data-code');
+  await wait(650);
+  const md = postMessages().filter(m => m.type === 'update').pop().text;
+  assert.ok(md.indexOf('```mermaid') !== -1 && md.indexOf('A[开始]') !== -1, '写盘为 mermaid 代码块');
 });
 
 chain.then(() => {

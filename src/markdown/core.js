@@ -29,6 +29,14 @@
   }
 
   // ============================ 行内解析（md → html 字符串） ============================
+  // 公式渲染：若同环境加载了 MdMath 则着色，否则保留原文（安全退化）
+  function mathInline(s) {
+    if (typeof MdMath === 'undefined' || !MdMath) { return null; }
+    // 仅渲染内容不含空白的 $...$（避免误伤货币 "$100 and $200"）；\$ 可转义
+    return s.replace(/([^\\$]|^)\$([^$\s]+?)\$/g, function (m, pre, body) {
+      return pre + '<span class="md-imath" data-tex="' + escapeHtml(body) + '">' + MdMath.render(body) + '</span>';
+    });
+  }
   var PH = '\u0000';
 
   function emph(s) {
@@ -59,6 +67,14 @@
     s = s.replace(/\[\^([^\]\s]+)\]/g, function (m, id) {
       return put('<sup class="md-fn" data-fn="' + escapeHtml(id) + '">' + escapeHtml(id) + '</sup>');
     });
+    // 3.5) 行内公式 $...$（有 MdMath 时；结果进占位避免后续标记干扰）
+    var im = (typeof MdMath !== 'undefined') ? mathInline(s) : null;
+    if (im !== null && im !== s) {
+      // 把公式 span 保护为占位，其余文本继续按普通流程处理
+      s = im.replace(/<span class="md-imath"[^>]*>[\s\S]*?<\/span>/g, function (m2) {
+        return put(m2);
+      });
+    }
     // 4) 图片 ![alt](src "title")
     s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, function (m, alt, srcUrl, title) {
       var t = title ? ' title="' + escapeHtml(title) + '"' : '';
@@ -133,6 +149,20 @@
         while (i < n && !new RegExp('^ {0,3}' + mark + '+\\s*$').test(lines[i])) { buf.push(lines[i]); i++; }
         i++; // 跳过闭合
         blocks.push({ type: 'code', lang: lang, code: buf.join('\n') });
+        continue;
+      }
+      // 块级公式 $$...$$（单行或跨行）
+      if (/^\s*\$\$/.test(line)) {
+        var single = line.match(/^\s*\$\$(.+)\$\$\s*$/);
+        if (single) {
+          blocks.push({ type: 'math', tex: single[1].trim() });
+          i++; continue;
+        }
+        var mbuf = [line.replace(/^\s*\$\$/, '')];
+        i++;
+        while (i < n && !/^\s*\$\$\s*$/.test(lines[i])) { mbuf.push(lines[i]); i++; }
+        i++;
+        blocks.push({ type: 'math', tex: mbuf.join('\n').trim() });
         continue;
       }
       // 标题
@@ -269,6 +299,8 @@
         out.push(prefix + new Array(b.level + 1).join('#') + ' ' + b.text + '\n\n'); break;
       case 'footnote':
         out.push(prefix + '[^' + b.id + ']: ' + b.text + '\n\n'); break;
+      case 'math':
+        out.push('$$' + b.tex + '$$\n\n'); break;
       case 'paragraph':
         out.push(indentLines(b.text, prefix) + '\n\n'); break;
       case 'code': {
@@ -345,8 +377,17 @@
     switch (b.type) {
       case 'heading': return '<h' + b.level + '>' + inlineHtml(b.text) + '</h' + b.level + '>';
       case 'footnote': return '<div class="md-fn-def" data-fn="' + escapeHtml(b.id) + '"><sup>' + escapeHtml(b.id) + '</sup> ' + inlineHtml(b.text) + '</div>';
+      case 'math': return (typeof MdMath !== 'undefined')
+        ? '<div class="md-math" data-tex="' + escapeHtml(b.tex) + '">' + MdMath.render(b.tex) + '</div>'
+        : '<div class="md-math" data-tex="' + escapeHtml(b.tex) + '"><code>' + escapeHtml(b.tex) + '</code></div>';
       case 'paragraph': return '<p>' + inlineHtml(b.text) + '</p>';
-      case 'code': return '<pre data-lang="' + escapeHtml(b.lang || '') + '"><code>' + hlCode(b.code, b.lang) + '</code></pre>';
+        case 'code': {
+          // mermaid 代码块 → 流程图 SVG（预览/导出同渲染）；失败降级源码
+          if (String(b.lang || '').toLowerCase() === 'mermaid' && typeof MdMm !== 'undefined') {
+            var svg = MdMm.render(b.code);
+            if (svg) { return '<div class="md-mermaid" data-code="' + escapeHtml(b.code) + '">' + svg + '</div>'; }
+          }
+          return '<pre data-lang="' + escapeHtml(b.lang || '') + '"><code>' + hlCode(b.code, b.lang) + '</code></pre>'; }
       case 'hr': return '<hr>';
       case 'quote': return '<blockquote>' + blocksToHtml(b.blocks) + '</blockquote>';
       case 'list':
@@ -412,10 +453,27 @@
           var p = doc.createElement('p'); p.innerHTML = inlineHtml(b.text); return p;
         }
         case 'code': {
-          var pre = document.createElement('pre'); pre.setAttribute('data-lang', b.lang || '');
-          var code = document.createElement('code');
+          // mermaid 代码块 → 流程图 SVG（有 MdMm 且解析成功时）；否则源码
+          if (String(b.lang || '').toLowerCase() === 'mermaid' && typeof MdMm !== 'undefined') {
+            var svg = MdMm.render(b.code);
+            if (svg) {
+              var mmDiv = doc.createElement('div');
+              mmDiv.className = 'md-mermaid'; mmDiv.setAttribute('data-code', b.code);
+              mmDiv.setAttribute('contenteditable', 'false');
+              mmDiv.innerHTML = svg; return mmDiv;
+            }
+          }
+          var pre = doc.createElement('pre'); pre.setAttribute('data-lang', b.lang || '');
+          var code = doc.createElement('code');
           code.innerHTML = hlCode(b.code, b.lang); // 高亮 span；序列化走 codeText() 递归取文本，不受影响
           pre.appendChild(code); return pre;
+        }
+        case 'math': {
+          var md = doc.createElement('div');
+          md.className = 'md-math'; md.setAttribute('data-tex', b.tex);
+          md.setAttribute('contenteditable', 'false');
+          md.innerHTML = (typeof MdMath !== 'undefined') ? MdMath.render(b.tex) : escapeHtml(b.tex);
+          return md;
         }
         case 'hr': return doc.createElement('hr');
         case 'quote': {
@@ -517,7 +575,11 @@
         case 'ul': case 'ol': blocks.push(domListToBlock(el)); break;
         case 'table': blocks.push(domTableToBlock(el)); break;
         case 'div':
-          if (el.classList.contains('md-fn-def')) {
+          if (el.classList.contains('md-math')) {
+            blocks.push({ type: 'math', tex: el.getAttribute('data-tex') || el.textContent.trim() });
+          } else if (el.classList.contains('md-mermaid')) {
+            blocks.push({ type: 'code', lang: 'mermaid', code: el.getAttribute('data-code') || '' });
+          } else if (el.classList.contains('md-fn-def')) {
             var clone = el.cloneNode(true);
             Array.prototype.forEach.call(clone.querySelectorAll('sup'), function (s0) { s0.remove(); });
             blocks.push({ type: 'footnote', id: el.getAttribute('data-fn') || '1', text: serInline(clone) });
@@ -629,6 +691,9 @@
             out.push(t); break;
           case 'span':
             if (n.classList.contains('md-check')) { break; }
+            if (n.classList.contains('md-imath') && n.getAttribute('data-tex')) {
+              out.push('$' + n.getAttribute('data-tex') + '$'); break;
+            }
             if ((n.getAttribute('style') || '').indexOf('font-family') !== -1) {
               // 选区级字体：以行内 HTML 持久化（inlineHtml 白名单还原，F02）
               out.push('<span style="' + n.getAttribute('style') + '">' + t + '</span>');
