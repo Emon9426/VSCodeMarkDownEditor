@@ -12,3 +12,4 @@ require('./highlight.test.js');
 require('./mathmermaid.test.js');
 require('./bench.test.js');
 require('./webview.jsdom.test.js');
+require('./ui.stability.test.js');

@@ -134,7 +134,7 @@ pre + * { }
 
 /* ============ 斜杠菜单（UI-03，Confluence 式） ============ */
 #slashMenu {
-  position: absolute; z-index: 60; width: 340px; max-height: 340px; display: none; flex-direction: column;
+  position: absolute; z-index: 60; width: 340px; max-width: calc(100vw - 12px); max-height: 340px; display: none; flex-direction: column;
   background: var(--vscode-editorWidget-background, #fff); color: var(--vscode-editorWidget-foreground, #1e293b);
   border: 1px solid var(--vscode-widget-border, #e2e8f0); border-radius: 10px;
   box-shadow: 0 16px 44px rgba(15,23,42,.28); overflow: hidden;
@@ -162,7 +162,7 @@ kbd {
 
 /* ============ 表格网格选择器（UI-02①） ============ */
 #tablePicker {
-  position: absolute; z-index: 70; width: 240px; display: none;
+  position: absolute; z-index: 70; width: 240px; max-width: calc(100vw - 12px); display: none;
   background: var(--vscode-editorWidget-background, #fff); border: 1px solid var(--vscode-widget-border, #e2e8f0);
   border-radius: 10px; box-shadow: 0 16px 44px rgba(15,23,42,.26); padding: 12px;
 }
@@ -197,7 +197,7 @@ kbd {
 
 /* ============ Emoji 面板（UI-03 右） ============ */
 #emojiPanel {
-  position: absolute; z-index: 80; width: 264px; display: none;
+  position: absolute; z-index: 80; width: 264px; max-width: calc(100vw - 12px); display: none;
   background: var(--vscode-editorWidget-background, #fff); border: 1px solid var(--vscode-widget-border, #e2e8f0);
   border-radius: 10px; box-shadow: 0 16px 44px rgba(15,23,42,.26); padding: 10px;
 }
@@ -258,6 +258,7 @@ body.source #preview { display: none; }
 #statusBar {
   flex: none; display: flex; align-items: center; height: 26px; font-size: 11.5px; user-select: none;
   background: var(--vscode-statusBar-background, #007acc); color: var(--vscode-statusBar-foreground, #fff);
+  overflow: hidden; white-space: nowrap;
 }
 #statusBar .seg { padding: 0 10px; display: flex; align-items: center; height: 100%; white-space: nowrap; }
 #statusBar .seg.clickable { cursor: pointer; }
@@ -293,7 +294,7 @@ body.source #preview { display: none; }
 
 /* ============ F16 页面设置面板（UI-09①） ============ */
 #pagePanel {
-  position: fixed; z-index: 90; width: 296px; display: none;
+  position: fixed; z-index: 90; width: 296px; max-width: calc(100vw - 12px); display: none;
   background: var(--vscode-editorWidget-background, #fff); color: var(--vscode-editorWidget-foreground, #1e293b);
   border: 1px solid var(--vscode-widget-border, #e2e8f0); border-radius: 10px;
   box-shadow: 0 16px 44px rgba(15,23,42,.26); padding: 12px; font-size: 12.5px;
@@ -340,11 +341,12 @@ body.vscode-light #editor pre, body.vscode-light #preview pre { background: #f6f
 
 /* ============ F12：查找替换条 ============ */
 #findBar {
-  display: none; align-items: center; gap: 4px; flex: none; z-index: 40;
+  display: none; align-items: center; gap: 4px; flex: none; z-index: 40; flex-wrap: wrap;
   padding: 5px 10px; background: var(--vscode-editorWidget-background, #fff);
   border-bottom: 1px solid var(--vscode-widget-border, #e2e8f0);
-  box-shadow: 0 4px 14px rgba(15,23,42,.12); font-size: 12px;
+  box-shadow: 0 4px 14px rgba(15,23,42,.12); font-size: 12px; max-width: 100%;
 }
+#findBar input { max-width: calc(100vw - 40px); }
 #findBar input {
   width: 170px; border: 1px solid var(--vscode-input-border, #cbd5e1); border-radius: 5px;
   padding: 4px 8px; background: var(--vscode-input-background, #fff);
@@ -397,7 +399,7 @@ sup.md-fn, #editor .md-fn-def sup, #preview .md-fn-def sup {
 
 /* ============ F02：字体下拉面板 ============ */
 #fontPanel {
-  position: fixed; z-index: 85; width: 220px; display: none;
+  position: fixed; z-index: 85; width: 220px; max-width: calc(100vw - 12px); display: none;
   background: var(--vscode-editorWidget-background, #fff); color: var(--vscode-editorWidget-foreground, #1e293b);
   border: 1px solid var(--vscode-widget-border, #e2e8f0); border-radius: 10px;
   box-shadow: 0 14px 36px rgba(15,23,42,.24); padding: 6px; max-height: 300px; overflow-y: auto;
@@ -410,7 +412,7 @@ sup.md-fn, #editor .md-fn-def sup, #preview .md-fn-def sup {
 
 /* ============ UI-04：右键菜单 ============ */
 #ctxMenu {
-  position: fixed; z-index: 95; display: none; min-width: 200px;
+  position: fixed; z-index: 95; display: none; min-width: 200px; max-width: calc(100vw - 12px);
   background: var(--vscode-menu-background, var(--vscode-editorWidget-background, #fff));
   color: var(--vscode-menu-foreground, var(--vscode-editorWidget-foreground, #1e293b));
   border: 1px solid var(--vscode-widget-border, #e2e8f0); border-radius: 10px;
@@ -423,7 +425,7 @@ sup.md-fn, #editor .md-fn-def sup, #preview .md-fn-def sup {
 
 /* ============ F15 AI 助手 ============ */
 #aiMenu {
-  position: fixed; z-index: 92; display: none; min-width: 180px;
+  position: fixed; z-index: 92; display: none; min-width: 180px; max-width: calc(100vw - 12px);
   background: var(--vscode-editorWidget-background, #fff); color: var(--vscode-editorWidget-foreground, #1e293b);
   border: 1px solid var(--vscode-widget-border, #e2e8f0); border-radius: 10px;
   box-shadow: 0 16px 40px rgba(15,23,42,.28); padding: 5px; font-size: 12.5px;
@@ -483,3 +485,17 @@ sup.md-fn, #editor .md-fn-def sup, #preview .md-fn-def sup {
 .md-mermaid:hover { border-color: var(--vscode-focusBorder, #4f46e5); }
 .md-mermaid svg text { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
 #preview .md-mermaid { border-style: solid; cursor: default; }
+
+/* ============ 响应式：窄视口（编辑器分屏 / 小窗口） ============ */
+@media (max-width: 700px) {
+  #statusBar #sbFont, #statusBar #sbLang { display: none; }
+  #editor { padding: 28px 24px; }
+  .rtab { padding: 6px 10px; font-size: 12px; }
+}
+@media (max-width: 500px) {
+  #statusBar #sbPage, #statusBar #sbPos { display: none; }
+  #editor { padding: 20px 14px; }
+  .rbtn { min-width: 26px; padding: 0 3px; }
+  .rgroup { padding: 0 6px; }
+  #tpGrid { grid-template-columns: repeat(6, 24px); }
+}

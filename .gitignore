@@ -8,6 +8,9 @@ node_modules/
 .mimosa/
 .vscode/
 
+# E2E 浏览器临时目录（CDP 调试时 Edge 用户数据）
+.edge-tmp/
+
 # 系统文件
 Thumbs.db
 .DS_Store
