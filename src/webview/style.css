@@ -81,6 +81,23 @@ body.vscode-dark #editor { box-shadow: 0 2px 12px rgba(0,0,0,.5); }
 #editor hr { border: none; border-top: 1.5px dashed var(--vscode-panel-border, #cbd5e1); margin: 18px 0; }
 #editor a { color: var(--vscode-textLink-foreground, #4f46e5); }
 #editor img { max-width: 100%; border-radius: 4px; display: block; margin: 8px auto; }
+/* 图片对齐（F06）：段落内相对纸张、单元格内相对该单元格；类规则优先于 td 的 inline-block 默认 */
+#editor img.md-img-l, #preview img.md-img-l { display: block; float: none; margin: 8px auto 8px 0; }
+#editor img.md-img-c, #preview img.md-img-c { display: block; float: none; margin: 8px auto; }
+#editor img.md-img-r, #preview img.md-img-r { display: block; float: none; margin: 8px 0 8px auto; }
+/* 图片对齐浮动工具条（选中图片时出现在图片上方） */
+#imgAlignBar {
+  position: fixed; z-index: 96; display: none; gap: 2px; padding: 3px;
+  background: var(--vscode-editorWidget-background, #fff);
+  border: 1px solid var(--vscode-widget-border, #e2e8f0); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(15,23,42,.22);
+}
+#imgAlignBar button {
+  width: 30px; height: 26px; border: none; border-radius: 5px; cursor: pointer;
+  background: transparent; color: var(--vscode-editor-foreground, #1e293b); font-size: 14px; line-height: 1;
+}
+#imgAlignBar button:hover { background: var(--vscode-list-hoverBackground, #eef2ff); }
+#imgAlignBar button.on { background: var(--vscode-list-activeSelectionBackground, #dbeafe); }
 /* 表格单元格内的图片：行内呈现，不撑破列宽（可与拖拽缩放配合） */
 #editor td img, #editor th img { display: inline-block; margin: 2px 0; vertical-align: middle; }
 /* 图片选中态与缩放手柄（F06 拖拽缩放） */

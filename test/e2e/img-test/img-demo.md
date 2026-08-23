@@ -1,14 +1,15 @@
-# 图片拖拽与表格验证
+# 图片对齐验证
 
-点击图片后拖右下角手柄可缩放：
+左对齐：
 
-![扩展图标](logo.png)
+<img src="logo.png" alt="L" width="120" align="left">
 
-<img src="logo.png" alt="带宽度" width="200">
+右对齐：
 
-## 表格内图片
+<img src="logo.png" alt="R" width="120" align="right">
 
-| 名称 | 图示 |
-|:---|:---|
-| 图标 | ![logo](logo.png) |
-| 缩放 | <img src="logo.png" width="120"> |
+## 表格内对齐
+
+| 左 | 中 | 右 |
+|:---|:---:|---:|
+| <img src="logo.png" width="80" align="left"> | <img src="logo.png" width="80" align="center"> | <img src="logo.png" width="80" align="right"> |

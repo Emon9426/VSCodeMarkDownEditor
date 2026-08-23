@@ -846,6 +846,35 @@ test('F06 表格内粘贴图片：不被纯文本分支拦截，走 saveImage', 
   assert.ok(qa('#editor td img[data-src="images/c.png"]').length === 1, '图片插入单元格');
 });
 
+test('F06 图片对齐：工具条设置 → class/align → 序列化 <img align> → 重载还原（段落与表格单元格）', async () => {
+  win.__onMessage({ data: { type: 'init', text: '# 图\n\n![a](x.png)\n\n| 列 |\n|---|\n| ![c](y.png) |\n', settings: {} } });
+  // 段落图片：点击选中 → 工具条 → 点右对齐
+  const img = qa('#editor img[data-src="x.png"]')[0];
+  img.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  const bar = q('#imgAlignBar');
+  assert.ok(bar, '对齐工具条已创建');
+  const btnR = qa('#imgAlignBar button').find(b => b.dataset.al === 'right');
+  btnR.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  assert.ok(img.classList.contains('md-img-r'), '右对齐 class 生效');
+  assert.strictEqual(img.getAttribute('align'), 'right', 'align 属性已挂');
+  await wait(650); // 防抖保存
+  const saved = postMessages().filter(m => m.type === 'update').pop();
+  assert.ok(saved.text.indexOf('<img src="x.png" alt="a" align="right">') !== -1, '段落序列化带 align: ' + saved.text.replace(/\n/g, '⏎').slice(0, 90));
+  // 表格单元格图片：居中对齐（相对该单元格）
+  const tdImg = qa('#editor td img[data-src="y.png"]')[0];
+  tdImg.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  const btnC = qa('#imgAlignBar button').find(b => b.dataset.al === 'center');
+  btnC.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  assert.ok(tdImg.classList.contains('md-img-c'), '单元格图片居中 class');
+  await wait(650);
+  const saved2 = postMessages().filter(m => m.type === 'update').pop();
+  assert.ok(saved2.text.indexOf('<img src="y.png" alt="c" align="center">') !== -1, '单元格序列化带 align');
+  // 重载还原（行内白名单 align → class）
+  win.__onMessage({ data: { type: 'init', text: 'P <img src="x.png" alt="a" align="right"> 混排\n', settings: {} } });
+  const img2 = qa('#editor img[data-src="x.png"]')[0];
+  assert.ok(img2 && img2.classList.contains('md-img-r') && img2.getAttribute('align') === 'right', '白名单还原 align=right + class');
+});
+
 chain.then(() => {
   console.log('\n结果: ' + (failed ? failed + ' 项失败' : '全部通过'));
   if (failed) { process.exitCode = 1; }

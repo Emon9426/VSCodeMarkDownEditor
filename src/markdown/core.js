@@ -91,15 +91,17 @@
     });
     // 5.5) 剩余纯文本 HTML 转义（此时真实 HTML 均已进入占位符，不会误伤）
     s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    // 5.5) 白名单行内 img 还原（拖拽缩放持久化 width + 历史文档 HTML 图）：
-    //     &lt;img src=".." alt=".." width=".."&gt; → 真实 img（属性白名单 src/alt/width，其余丢弃）
+    // 5.5) 白名单行内 img 还原（拖拽缩放持久化 width + 对齐 align + 历史文档 HTML 图）：
+    //     &lt;img src=".." alt=".." width=".." align="left|center|right"&gt; → 真实 img（属性白名单，其余丢弃防注入）
     s = s.replace(/&lt;img\s+([\s\S]*?)\/?&gt;/g, function (m0, attrs) {
       function unesc(x) { return String(x).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&'); }
       var src = /(?:data-)?src=&quot;([\s\S]*?)&quot;/.exec(attrs);
       if (!src) { return m0; }
       var alt = /alt=&quot;([\s\S]*?)&quot;/.exec(attrs);
       var w = /width=&quot;(\d+)&quot;/.exec(attrs);
-      return put('<img data-src="' + unesc(src[1]) + '" alt="' + (alt ? unesc(alt[1]) : '') + '"' + (w ? ' width="' + w[1] + '"' : '') + '>');
+      var al = /align=&quot;(left|center|right)&quot;/.exec(attrs);
+      var cls = al ? ' class="md-img-' + (al[1] === 'left' ? 'l' : al[1] === 'center' ? 'c' : 'r') + '"' : '';
+      return put('<img data-src="' + unesc(src[1]) + '" alt="' + (alt ? unesc(alt[1]) : '') + '"' + (w ? ' width="' + w[1] + '"' : '') + cls + (al ? ' align="' + al[1] + '"' : '') + '>');
     });
     // 5.6) 白名单行内样式 span 还原（选区级字体持久化，F02）：&lt;span style="font-family:..."&gt; → 真实标签
     s = s.replace(/&lt;(\/?)span style=&quot;font-family:[^&]*&gt;/g, function (m0, slash) {
@@ -535,12 +537,16 @@
         case 'html': {
           var d = doc.createElement('div'); d.className = 'md-raw-html';
           d.innerHTML = b.raw;
-          // 本地图片进 HTML 块时补 data-src（图片解析按 data-src 收集相对路径）
+          // 本地图片进 HTML 块时补 data-src（图片解析按 data-src 收集相对路径）+ align → 显示 class
           Array.prototype.forEach.call(d.querySelectorAll('img'), function (im) {
             var s0 = im.getAttribute('src') || '';
             if (s0 && !/^(https?:|data:|vscode-webview:)/i.test(s0) && !im.getAttribute('data-src')) {
               im.setAttribute('data-src', s0);
             }
+            var a0 = im.getAttribute('align');
+            if (a0 === 'left') { im.classList.add('md-img-l'); }
+            else if (a0 === 'center') { im.classList.add('md-img-c'); }
+            else if (a0 === 'right') { im.classList.add('md-img-r'); }
           });
           return d; // 保持可编辑（面板等 HTML 块内容可直接修改）
         }
@@ -612,6 +618,14 @@
                 var s1 = im.getAttribute('src') || '';
                 if (/^vscode-webview:/i.test(s1)) { im.removeAttribute('src'); }
               }
+              // 显示 class → 标准 align 属性写盘（md-img-l/c/r 与选中态 md-imgsel 不入盘）
+              if (!im.getAttribute('align')) {
+                if (im.classList.contains('md-img-l')) { im.setAttribute('align', 'left'); }
+                else if (im.classList.contains('md-img-c')) { im.setAttribute('align', 'center'); }
+                else if (im.classList.contains('md-img-r')) { im.setAttribute('align', 'right'); }
+              }
+              im.classList.remove('md-img-l', 'md-img-c', 'md-img-r', 'md-imgsel');
+              if (!im.getAttribute('align')) { im.removeAttribute('align'); } // 清除空串对齐属性
             });
             blocks.push({ type: 'html', raw: hClone.outerHTML });
           } else if (el.classList.contains('code-tools')) {
@@ -709,10 +723,20 @@
             var src = n.getAttribute('data-src') || n.getAttribute('src') || '';
             var alt = n.getAttribute('alt') || '';
             // 拖拽缩放的宽度持久化：有 width 时写 <img> HTML（GitHub / VS Code 预览原生渲染），
-            // 无 width 保持纯 ![alt](src) 语法；宽度过小视为未设置
+            // 无 width 保持纯 ![alt](src) 语法；宽度过小视为未设置。
+            // 对齐持久化：align 属性（left/center/right），磁盘写 <img align>，显示端映射 class
             var iw = parseInt(n.getAttribute('width') || (n.style && n.style.width) || '', 10);
-            if (iw >= 20) {
-              out.push('<img src="' + src.replace(/"/g, '%22') + '" alt="' + alt.replace(/"/g, '&quot;') + '" width="' + iw + '">');
+            var algn = n.getAttribute('align');
+            if (!algn && n.classList) {
+              if (n.classList.contains('md-img-l')) { algn = 'left'; }
+              else if (n.classList.contains('md-img-c')) { algn = 'center'; }
+              else if (n.classList.contains('md-img-r')) { algn = 'right'; }
+            }
+            if (iw >= 20 || algn) {
+              var attrsOut = ' src="' + src.replace(/"/g, '%22') + '" alt="' + alt.replace(/"/g, '&quot;') + '"';
+              if (iw >= 20) { attrsOut += ' width="' + iw + '"'; }
+              if (algn) { attrsOut += ' align="' + algn + '"'; }
+              out.push('<img' + attrsOut + '>');
             } else {
               out.push('![' + alt + '](' + src + ')');
             }

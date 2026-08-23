@@ -384,7 +384,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.8.0</span>'
+      '<span class="seg">Markdown Word v1.8.1</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -2382,23 +2382,65 @@
   // 有 width 的图片序列化为 <img src width>（GitHub / VS Code 预览原生渲染），无 width 保持 ![alt](src)
   let selImg = null, imgDrag = null;
   const imgHandle = document.createElement('div'); imgHandle.id = 'imgHandle';
+  // 对齐工具条：左 / 居中 / 右（段落内相对纸张，单元格内相对该单元格）
+  const imgAlignBar = document.createElement('div'); imgAlignBar.id = 'imgAlignBar';
+  imgAlignBar.innerHTML =
+    '<button data-al="left" title="左对齐">⯇</button>' +
+    '<button data-al="center" title="居中">≡</button>' +
+    '<button data-al="right" title="右对齐">⯈</button>';
+
+  function imgAlignOf(img) {
+    if (img.classList.contains('md-img-l')) { return 'left'; }
+    if (img.classList.contains('md-img-c')) { return 'center'; }
+    if (img.classList.contains('md-img-r')) { return 'right'; }
+    return '';
+  }
+  function setImgAlign(img, al) {
+    img.classList.remove('md-img-l', 'md-img-c', 'md-img-r');
+    if (al) { img.classList.add(al === 'left' ? 'md-img-l' : al === 'center' ? 'md-img-c' : 'md-img-r'); }
+    img.setAttribute('align', al || ''); // 序列化读 align（空串=清除）
+    scheduleSave();
+    markAlignBtns();
+    setTimeout(placeImgHandle, 0); // 布局变化后手柄/工具条跟随
+  }
+  function markAlignBtns() {
+    const cur = selImg ? imgAlignOf(selImg) : '';
+    $$('#imgAlignBar button').forEach(b => { b.classList.toggle('on', b.dataset.al === cur); });
+  }
+  function placeImgAlignBar() {
+    if (!selImg) { imgAlignBar.style.display = 'none'; return; }
+    const r = selImg.getBoundingClientRect();
+    if (!r.width && !r.height) { imgAlignBar.style.display = 'none'; return; }
+    imgAlignBar.style.display = 'flex';
+    imgAlignBar.style.left = Math.max(8, Math.min(r.left + r.width / 2 - 53, window.innerWidth - 116)) + 'px';
+    imgAlignBar.style.top = Math.max(8, r.top - 36) + 'px';
+  }
+  const placeImgBoth = () => { placeImgHandle(); placeImgAlignBar(); };
 
   function hideImgSel() {
     if (selImg) { selImg.classList.remove('md-imgsel'); }
     selImg = null;
     imgHandle.style.display = 'none';
+    imgAlignBar.style.display = 'none';
   }
   function placeImgHandle() {
     if (!selImg) { return; }
     const r = selImg.getBoundingClientRect();
-    if (!r.width && !r.height) { imgHandle.style.display = 'none'; return; } // 隐藏（jsdom / display:none）
+    if (!r.width && !r.height) { imgHandle.style.display = 'none'; imgAlignBar.style.display = 'none'; return; } // 隐藏（jsdom / display:none）
     imgHandle.style.display = 'block';
     imgHandle.style.left = (r.right - 5) + 'px';
     imgHandle.style.top = (r.bottom - 5) + 'px';
+    placeImgAlignBar();
   }
   function initImageResize() {
     document.body.appendChild(imgHandle);
-    editorWrap.addEventListener('scroll', () => { if (selImg) { placeImgHandle(); } });
+    document.body.appendChild(imgAlignBar);
+    imgAlignBar.addEventListener('mousedown', e => e.preventDefault()); // 防止点击按钮夺走选区/图片选择态
+    imgAlignBar.addEventListener('click', e => {
+      const b = e.target.closest('button[data-al]');
+      if (b && selImg) { setImgAlign(selImg, b.dataset.al); }
+    });
+    editorWrap.addEventListener('scroll', () => { if (selImg) { placeImgBoth(); } });
     editor.addEventListener('mousedown', e => {
       // 图片选择态不需要光标定位：阻止默认（防拖动时选区闪动）
       if (selImg) { e.preventDefault(); }
@@ -2410,6 +2452,7 @@
         hideImgSel();
         selImg = img;
         img.classList.add('md-imgsel');
+        markAlignBtns();
         placeImgHandle();
       } else if (selImg) {
         hideImgSel();

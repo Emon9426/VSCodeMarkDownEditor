@@ -12,7 +12,7 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](#开发与测试)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#许可证)
-[![Version](https://img.shields.io/badge/version-1.8.0-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.1-8A2BE2)](CHANGELOG.md)
 
 **磁盘上永远是标准 Markdown** —— 可视化编辑零语法妥协，往返保真。
 
@@ -64,7 +64,7 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
 **方式一：VSIX 安装（推荐）**
 
 ```bash
-code --install-extension wysiwyg-markdown-editor-1.8.0.vsix
+code --install-extension wysiwyg-markdown-editor-1.8.1.vsix
 ```
 
 或在扩展面板 → `···` → **从 VSIX 安装...**。
@@ -199,6 +199,8 @@ Ribbon「插入 → ⬡」在文档目录 `diagrams/` 下创建 `.drawio.svg` �
   以相对路径引用——**临时 blob 永不写入**，换机器不丢图；支持本地文件拖拽、文件管理器复制粘贴、多图一次粘贴；
 - **点击图片 → 拖动右下角手柄调整尺寸**（等比缩放，宽度持久化为 `<img width>`，
   GitHub / VS Code 预览原生渲染；未调整过的图片保持纯 `![alt](src)` 语法）；
+- **图片对齐**：选中图片时浮动工具条一键切换**左对齐 / 居中 / 右对齐**——段落内相对纸张、
+  表格单元格内相对该单元格（持久化为 `<img align>`，GitHub 兼容）；
 - **图片可放入表格单元格**（行内呈现、防撑破列宽，同样支持粘贴与缩放）；
 - 本地图片自动解析为可显示资源；图片丢失时红虚线提示。
 
@@ -329,7 +331,7 @@ page setup, and a bilingual (Chinese/English) UI.
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](#development--testing)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
-[![Version](https://img.shields.io/badge/version-1.8.0-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.1-8A2BE2)](CHANGELOG.md)
 
 **The file on disk is always plain, standard Markdown** — visual editing with zero syntax compromise, lossless round-trip.
 
@@ -381,7 +383,7 @@ Latin and CJK text each get their own font (Segoe UI × Microsoft YaHei); code a
 **Option 1: Install from VSIX (recommended)**
 
 ```bash
-code --install-extension wysiwyg-markdown-editor-1.8.0.vsix
+code --install-extension wysiwyg-markdown-editor-1.8.1.vsix
 ```
 
 Or via the Extensions panel → `···` → **Install from VSIX...**.
@@ -517,6 +519,9 @@ Status bar 📄 or Ribbon *View → Page*:
   file drag-and-drop, pasting copied image files, and pasting multiple images at once all work;
 - **Click an image and drag the bottom-right handle to resize** (aspect-preserving; the width
   persists as `<img width>`, rendered natively by GitHub / VS Code preview; unresized images keep plain `![alt](src)` syntax);
+- **Image alignment**: a floating toolbar appears when selected — **left / center / right** —
+  relative to the paper in paragraphs and **relative to the cell inside tables**
+  (persisted as `<img align>`, GitHub-compatible);
 - **Images can live inside table cells** (inline presentation, column-width safe; pasting and resizing both work);
 - Local images resolve automatically; missing images get a dashed-red hint.
 
