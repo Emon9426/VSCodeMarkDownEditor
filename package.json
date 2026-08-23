@@ -2,7 +2,7 @@
   "name": "wysiwyg-markdown-editor",
   "displayName": "Markdown Word — WYSIWYG Markdown Editor",
   "description": "Word 式所见即所得 Markdown 编辑器：两行图标化 Ribbon、可视化表格、图片粘贴落盘、Confluence 式斜杠菜单、代码块（含 PL/SQL）等宽字体",
-  "version": "1.6.3",
+  "version": "1.7.0",
   "publisher": "markdown-word",
   "license": "MIT",
   "engines": {
@@ -70,14 +70,30 @@
         "title": "Markdown Word: 大纲跳转（内部命令）"
       }
     ],
-    "views": {
-      "explorer": [
+    "viewsContainers": {
+      "activitybar": [
         {
-          "id": "markdownWordOutline",
-          "name": "Markdown Word 大纲"
+          "id": "markdownWord",
+          "title": "Markdown Word",
+          "icon": "media/outline-icon.svg"
         }
       ]
     },
+    "views": {
+      "markdownWord": [
+        {
+          "id": "markdownWordOutline",
+          "name": "大纲",
+          "contextualTitle": "Markdown Word"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "markdownWordOutline",
+        "contents": "用 **Markdown Word** 打开任意 .md 文件后，此处将显示文档大纲（标题树）。\n[打开 Markdown 文件](command:workbench.action.files.openFile)"
+      }
+    ],
     "configuration": {
       "title": "Markdown Word",
       "properties": {
