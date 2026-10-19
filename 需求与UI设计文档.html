@@ -1540,7 +1540,7 @@
       <tr><td>—</td><td>快捷键体系（规避 VS Code 内置冲突，全量可自定义）</td><td><span class="badge b-p0">P0</span></td><td><a href="#s5">5 · 快捷键</a></td><td><span class="st st-dev">已开发待验收</span>核心绑定 15+；Ctrl+\` 等个别需真机确认冲突（2026-08-22）</td></tr>
       <tr><td>横切</td><td>性能专项（v1.5）：流畅度第一优先（键入 &lt;16ms / 60fps / 菜单 &lt;100ms / 首屏 &lt;300ms）+ 内存第二优先（空文档 &lt;150MB / 典型 &lt;300MB / 8h 无泄漏）</td><td><span class="badge b-p0">P0</span></td><td><a href="#s7">7 · 非功能</a> / <a href="#s8">8 · 技术</a></td><td><span class="st st-part">部分完成</span>v1.5.0：CI 基准 5 项（50/200KB parse/roundtrip/高亮/行内，宽松阈值防回退）✓；键入/滚动/内存指标需真机验收（2026-08-23）</td></tr>
       <tr><td colspan="5" style="background:#fffbeb;font-weight:700;color:#92400e">P1 · v1.0（第二批交付）</td></tr>
-      <tr><td>F02+</td><td>字体中英分设：西文 / 中文双下拉、字号、持久化、PDF 内嵌（v1.2）</td><td><span class="badge b-p1">P1 · v1.2</span></td><td><a href="#f02">3 · F02</a></td><td><span class="st st-done">已完成</span>v1.9.0：下拉升级为本机全部已安装字体（F18 系统字体全量列表）；v1.5.0：文档级回退链 ✓ + 选区级行内 span 持久化（白名单还原）✓；PDF 字体内嵌待（2026-10-19）</td></tr>
+      <tr><td>F02+</td><td>字体中英分设：西文 / 中文双下拉、字号、持久化、PDF 内嵌（v1.2）</td><td><span class="badge b-p1">P1 · v1.2</span></td><td><a href="#f02">3 · F02</a></td><td><span class="st st-done">已完成</span>v1.9.1：设置页可设默认中英文字体（markdownDescription 命令链接直达本机字体选择器，修改即时广播生效）；v1.9.0：下拉升级为本机全部已安装字体（F18 系统字体全量列表）；v1.5.0：文档级回退链 ✓ + 选区级行内 span 持久化（白名单还原）✓；PDF 字体内嵌待（2026-10-20）</td></tr>
       <tr><td>F10</td><td>高级内容：公式 / Mermaid / 脚注 / TOC / 四色面板 / HTML 直写</td><td><span class="badge b-p1">P1</span></td><td><a href="#f10">3 · F10</a></td><td><span class="st st-dev">已开发待验收</span>v1.6.0 全量交付：脚注/TOC/面板 ✓ + <b>公式（自研 LaTeX 子集：$$块/$行内，双击编辑）</b> + <b>Mermaid（自研 graph TD/LR 子集 → SVG，双击编辑，不支持语法降级源码）</b>——外部库阻塞经自研渲染器解阻（2026-08-23）</td></tr>
       <tr><td>F10+</td><td>Draw.io 流程图嵌入编辑（.drawio.svg 持久化，M2 POC / M3 落地）（v1.3）</td><td><span class="badge b-p1">P1 · v1.3</span></td><td><a href="#f10">3 · F10</a> / <a href="#ui-08">UI-08</a></td><td><span class="st st-part">生态集成交付</span>v1.6.0：.drawio.svg/.png 引用渲染 ✓ + 右键"用 Draw.io 编辑"（vscode-drawio 并排打开）；简单图可用自研 Mermaid 子集替代；嵌入画布版待后续评估（2026-08-23）</td></tr>
       <tr><td>F10+</td><td>Emoji 面板 + MRU 置顶 + 斜杠直插（双入口实时同步）（v1.3）</td><td><span class="badge b-p1">P1 · v1.3</span></td><td><a href="#f10">3 · F10</a> / <a href="#ui-03">UI-03</a></td><td><span class="st st-todo">未开始</span></td></tr>
@@ -1564,7 +1564,7 @@
 </main>
 
 <footer>
-  Markdown Word · 需求与 UI 设计文档 v1.9.0 评审稿 · 2026-10-19 · v1.9.0 变更：新增 F18 系统字体全量列表与悬空按钮清零（issue #1，229 项测试，真机验证）· v1.8.2 变更：新增 F17 缩放全局记忆（issue #2，218 项测试）· v1.8 变更：F16 页面设置与外观实施交付（v1.1.0 vsix，48 项测试通过）· 历史变更见第 2 节 · 本文档可直接在浏览器中打开评审
+  Markdown Word · 需求与 UI 设计文档 v1.9.1 评审稿 · 2026-10-20 · v1.9.1 变更：设置页默认中英文字体（即时生效 + 选择器链接）；v1.9.0 变更：新增 F18 系统字体全量列表与悬空按钮清零（issue #1，229 项测试，真机验证）· v1.8.2 变更：新增 F17 缩放全局记忆（issue #2，218 项测试）· v1.8 变更：F16 页面设置与外观实施交付（v1.1.0 vsix，48 项测试通过）· 历史变更见第 2 节 · 本文档可直接在浏览器中打开评审
 </footer>
 
 <script>

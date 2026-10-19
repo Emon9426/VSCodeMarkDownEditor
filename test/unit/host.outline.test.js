@@ -307,6 +307,36 @@ test('F17 缩放全局联动：saveSetting(global) → 写用户级配置 → �
   // 面板销毁后不再接收（webview 集合移除）
 });
 
+test('v1.9.1 字体设置联动：设置页改 fontFamilyLatin/CJK → 广播 fontSettingChanged 到所有已打开 webview', async () => {
+  const provider = vscode._calls.providers[0].provider;
+  const mkPanel = () => {
+    const box = { posted: [], listeners: [] };
+    const webview = {
+      asWebviewUri: uri => ({ toString: () => 'webview://' + uri.path }),
+      postMessage: m => { box.posted.push(m); return Promise.resolve(); },
+      onDidReceiveMessage: l => { box.listeners.push(l); return { dispose() {} }; }
+    };
+    const panel = { webview: webview, onDidChangeViewState: () => ({ dispose() {} }), onDidDispose: () => ({ dispose() {} }) };
+    const doc = { uri: { toString: () => 'file:///' + Math.random().toString(36).slice(2) + '.md', scheme: 'file', path: '/x.md' }, getText: () => 'x', lineCount: 1 };
+    provider.resolveCustomTextEditor(doc, panel, {});
+    return box;
+  };
+  const a = mkPanel(), b = mkPanel();
+  // 模拟用户在设置页修改两个字体设置 → 配置变更事件 → 广播
+  vscode.workspace.getConfiguration('markdownWord').update('editor.fontFamilyLatin', 'Consolas');
+  vscode.workspace.getConfiguration('markdownWord').update('editor.fontFamilyCJK', 'SimSun');
+  vscode._configListeners.forEach(l => l({ affectsConfiguration: key => key === 'markdownWord.editor.fontFamilyLatin' || key === 'markdownWord.editor.fontFamilyCJK' }));
+  [a, b].forEach((box, i) => {
+    const fc = box.posted.filter(m => m.type === 'fontSettingChanged');
+    assert.strictEqual(fc.length, 1, 'webview ' + i + ' 收到一次字体广播');
+    assert.strictEqual(fc[0].latin, 'Consolas', 'latin 广播值');
+    assert.strictEqual(fc[0].cjk, 'SimSun', 'cjk 广播值');
+  });
+  // 无关配置变更不广播字体（注意不能用 view.zoom 判定——它也是被监听键，会误触发 zoom 广播）
+  vscode._configListeners.forEach(l => l({ affectsConfiguration: key => key === 'markdownWord.page.size' }));
+  assert.strictEqual(a.posted.filter(m => m.type === 'fontSettingChanged').length, 1, '无关变更不广播字体');
+});
+
 test('F18 listFonts：webview 请求 → 宿主扫描（stub 空目录）→ fonts 数组回传，缓存复用', async () => {
   const provider = vscode._calls.providers[0].provider;
   const mk = makePanel('# 文档\n');

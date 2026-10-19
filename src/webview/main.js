@@ -389,7 +389,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.9.0</span>'
+      '<span class="seg">Markdown Word v1.9.1</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -2174,6 +2174,13 @@
           { icon: '¶', label: '正文', fn: () => setBlockType('p') }
         ]);
         break;
+      case 'pickFontLatin':
+        // v1.9.1：设置页「从本机已安装字体中选择…」命令链接入口（锚点用状态栏，靠近底部自动向上展开）
+        showFontPanel($('#sbFont') || editorWrap, 'latin');
+        break;
+      case 'pickFontCJK':
+        showFontPanel($('#sbFont') || editorWrap, 'cjk');
+        break;
       case 'p': setBlockType('p'); break;
       case 'quote': setBlockType('quote'); break;
       case 'indent': case 'outdent': {
@@ -2980,6 +2987,13 @@
       case 'fonts':
         sysFonts = (msg.fonts || []).slice(); // 宿主已按名称排序；回填后若面板开着即时渲染
         if ($('#fontPanel')) { renderFontList(); }
+        break;
+      case 'fontSettingChanged':
+        // 设置页改了默认中英文字体（v1.9.1）→ 即时应用，无需重开文档
+        settings.editor = settings.editor || {};
+        settings.editor.fontFamilyLatin = msg.latin || '';
+        settings.editor.fontFamilyCJK = msg.cjk || '';
+        applyFontVars();
         break;
       case 'zoomChanged': applyZoom(msg.zoom); break; // 其他文档调整缩放 → 本文档实时跟随（只应用不回写，防循环）
       case 'gotoHeading': gotoHeading(msg.text); break;
