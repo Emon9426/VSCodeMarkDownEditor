@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.2（2026-10-19）
+
+F17 缩放全局记忆（GitHub [issue #2](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/2)，用户 Suertida：2K 屏下文件 A 设好的缩放切到文件 B 不生效、重启后全部归零）：**视图缩放按全局用户级记忆，一处设置处处生效**。
+
+- **全局用户级持久化**：新增 `markdownWord.view.zoom`（75–200，默认 100）写入用户 settings——跨文档、跨项目、重启 VS Code 全部保持（缩放本质是显示器属性，与 VS Code `window.zoomLevel` 同级；与 F16 页面设置的工作区级持久化刻意区分）
+- **已打开文档实时同步**：任一文档调整缩放 → 宿主 `onDidChangeConfiguration` 统一广播 `zoomChanged` 到所有存活 webview（含手改 settings.json 场景）；广播只应用不回写，杜绝保存循环
+- **三模式统一**：所见即所得（15px 基准）/ 源码 textarea（14px 等宽）/ 分屏预览（15px）等比缩放——修复此前源码 / 分屏模式下缩放按钮静默无反应
+- **档位快选面板**：开始页签「字号」下拉（此前为悬空 UI，从未绑定事件）与视图页签百分比显示均可点开档位面板（75 / 90 / 100 / 110 / 125 / 150 / 175 / 200，当前档高亮）；「字号」标签随缩放显示有效字号（150% → 22.5）
+- 测试 218 项（+7）：webview 侧 init 应用不回写 / zoomIn 步进持久化消息（global 标记）/ zoomChanged 广播跟随且无保存循环 / 75–200 钳制 / 两处档位面板全链路；宿主侧 saveSetting(global) → 写用户级配置 → 广播两个已打开 webview / 无关配置变更不广播
+- **真机验证通过（真实 VS Code 1.142 + 安装 vsix，UI 自动化驱动）**：A⁺×2 → 120% 且写入用户 settings.json；**已打开的文档 B 实时广播跟随**（issue #2 核心痛点）；档位面板选 150% → A 反向跟随；源码 / 分屏模式在缩放下正常；手改 settings.json（150→75）→ 打开的文档即时跟随；**重启 VS Code → 75% 记忆恢复**；A.md/B.md 源码零污染。环境备注：本机 `--remote-debugging-port` 下 webview 不加载（VS Code 宿主限制），真机验证经 UI 自动化完成；另清理了残留的旧 publisher ID 1.7.1 扩展（双扩展抢注隐患）
+
 ## 1.8.1（2026-08-23）
 
 F06 图片对齐（用户需求）：**左对齐 / 居中 / 右对齐，段落内相对纸张、表格单元格内相对该单元格**。

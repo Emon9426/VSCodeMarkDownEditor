@@ -21,6 +21,7 @@
 
   let editor, editorWrap, srcTextarea, preview, toastEl;
   let slashEl, slashList, tablePicker, emojiPanel, ttBar, dlgMask, pagePanel;
+  let zoomSizeDdl = null; // 开始页签「字号」下拉（F17：显示有效字号，点击弹出缩放档位）
 
   const MODE_NAMES = { wysiwyg: '所见即所得', source: '源码', split: '分屏' };
 
@@ -247,10 +248,12 @@
     home.appendChild(group('剪贴板', [
       iconBtn('📋<small>▾</small>', '粘贴（▾ 内含剪切 / 复制）· Ctrl+V', 'paste')
     ]));
+    const sizeDdl = fddl('15 ▾', '字号（随缩放变化）· 点击选择缩放档位（全局记忆，跨文档生效）');
+    zoomSizeDdl = sizeDdl;
     const fontRow = [
       fddl('Aa 西文 ▾', '西文字体（拉丁字符与数字）· 默认 Segoe UI，随 VS Code 编辑器字体'),
       fddl('汉 中 ▾', '中文字体（CJK 字符）· 默认微软雅黑'),
-      fddl('15 ▾', '字号（视图页可整体缩放）')
+      sizeDdl
     ];
     home.appendChild(group('字体（中英分设）', fontRow.concat([
       sep(),
@@ -331,10 +334,12 @@
     view.appendChild(group('显示', [
       iconBtn('🗂', '大纲视图：打开侧栏标题树（点击标题跳转正文）', 'outline')
     ]));
-    view.appendChild(group('缩放', [
-      iconBtn('A⁻', '缩小字号', 'zoomOut'), fddl('100%', '缩放比例'),
-      iconBtn('A⁺', '放大字号', 'zoomIn')
-    ]));
+    view.appendChild(group('缩放（全局记忆）', (function () {
+      const pct = fddl('100%', '缩放比例（全局记忆：跨文档、重启保持）· 点击选择档位');
+      pct.style.cursor = 'pointer'; pct.onclick = e => showZoomPanel(e.target);
+      return [iconBtn('A⁻', '缩小字号（全局记忆）', 'zoomOut'), pct,
+        iconBtn('A⁺', '放大字号（全局记忆）', 'zoomIn')];
+    })()));
     view.appendChild(group('页面（F16）', [
       iconBtn('📄<small>▾</small>', '页面设置：纸张尺寸（适应屏幕 / A4 / A3 / A5 / B5 / Letter / Legal / 自定义），切换后内容流式重排', 'pageSetup'),
       iconBtn('🎨', '页面外观：背景色（护眼绿 / 羊皮纸 / 冰蓝 / 自定义）与条纹（横线 / 方格 / 点阵）', 'pageSetup')
@@ -384,7 +389,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.8.1</span>'
+      '<span class="seg">Markdown Word v1.8.2</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -1641,11 +1646,12 @@
   }
   function hideFontPanel() { const p = $('#fontPanel'); if (p) { p.remove(); } }
   function bindFontDdls() {
-    // Ribbon「开始」页的三个字体下拉（Aa 西文 / 汉 中 / 字号）
+    // Ribbon「开始」页签的三个字体下拉（Aa 西文 / 汉 中 / 字号→缩放档位）
     const ddls = $$('#rp-home .fddl');
     if (ddls.length >= 3) {
       ddls[0].style.cursor = 'pointer'; ddls[0].onclick = e => showFontPanel(e.target, 'latin');
       ddls[1].style.cursor = 'pointer'; ddls[1].onclick = e => showFontPanel(e.target, 'cjk');
+      ddls[2].style.cursor = 'pointer'; ddls[2].onclick = e => showZoomPanel(e.target);
     }
   }
 
@@ -2160,12 +2166,45 @@
     }
   }
 
+  // ================= F17 缩放全局记忆（issue #2） =================
+  // 三模式统一缩放 + 全局用户级持久化（跨文档/跨项目/重启记忆）+ 宿主广播实时跟随
   let zoom = 100;
-  function zoomFont(d) {
-    zoom = Math.max(75, Math.min(200, zoom + d * 10));
+  const ZOOM_LEVELS = [75, 90, 100, 110, 125, 150, 175, 200];
+  function applyZoom(v) {
+    zoom = Math.min(200, Math.max(75, Math.round(+v || 100)));
+    // 所见即所得与分屏预览 15px 基准、源码 textarea 14px 基准，等比缩放
     editor.style.fontSize = (15 * zoom / 100).toFixed(1) + 'px';
+    srcTextarea.style.fontSize = (14 * zoom / 100).toFixed(1) + 'px';
+    const pv = $('.pv-inner'); if (pv) { pv.style.fontSize = (15 * zoom / 100).toFixed(1) + 'px'; }
     $$('.fddl').forEach(f => { if (f.textContent.indexOf('%') !== -1) { f.textContent = zoom + '%'; } });
+    if (zoomSizeDdl) { zoomSizeDdl.textContent = (15 * zoom / 100).toFixed(1).replace(/\.0$/, '') + ' ▾'; }
   }
+  function setZoom(v) {
+    const before = zoom;
+    applyZoom(v);
+    if (zoom !== before) {
+      // 全局用户级持久化；宿主经 onDidChangeConfiguration 广播 zoomChanged 到其他已打开文档
+      vscode.postMessage({ type: 'saveSetting', section: 'view', key: 'zoom', value: zoom, global: true });
+    }
+  }
+  function zoomFont(d) { setZoom(zoom + d * 10); }
+  function showZoomPanel(anchor) {
+    hideZoomPanel();
+    const panel = document.createElement('div'); panel.id = 'zoomPanel';
+    ZOOM_LEVELS.forEach(function (lv) {
+      const item = document.createElement('div');
+      item.className = 'fitem' + (lv === zoom ? ' on' : '');
+      item.textContent = (lv === zoom ? '✓ ' : '') + lv + '%';
+      item.onclick = () => { setZoom(lv); hideZoomPanel(); };
+      panel.appendChild(item);
+    });
+    $('#app').appendChild(panel);
+    const r = anchor.getBoundingClientRect();
+    panel.style.display = 'block'; panel.style.position = 'fixed';
+    panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 230)) + 'px';
+    panel.style.top = (r.bottom + 6) + 'px';
+  }
+  function hideZoomPanel() { const p = $('#zoomPanel'); if (p) { p.remove(); } }
 
   // ================= 键盘：速记 / Tab / Enter / Backspace / 快捷键 =================
   function onKeydown(e) {
@@ -2796,6 +2835,7 @@
         applyLanguage();
         applyPageSettings();
         applyFontVars();
+        applyZoom((settings.view && settings.view.zoom) || 100); // F17：应用全局记忆的缩放（不回写）
         loadMarkdown(msg.text || '');
         sendOutline();
         setMode(settings.defaultMode === 'source' || settings.defaultMode === 'split' ? settings.defaultMode : 'wysiwyg');
@@ -2839,6 +2879,7 @@
         break;
       }
       case 'imageMap': applyImageMap(msg.map || {}); break;
+      case 'zoomChanged': applyZoom(msg.zoom); break; // 其他文档调整缩放 → 本文档实时跟随（只应用不回写，防循环）
       case 'gotoHeading': gotoHeading(msg.text); break;
       case 'aiChunk':
         if (msg.id === aiState.id) { aiState.result += msg.delta || ''; paintAiChunk(); }

@@ -44,6 +44,7 @@ class MarkdownWordEditorProvider {
   constructor(context) {
     this.context = context;
     this.activeWebview = null; // 当前激活面板的 webview（供命令转发）
+    this.webviews = new Set(); // 全部存活 webview（缩放等全局设置广播到已打开文档）
   }
 
   // ================= F15 AI 通道（GitHub Copilot · Language Model API） =================
@@ -113,6 +114,7 @@ class MarkdownWordEditorProvider {
       localResourceRoots: [this.context.extensionUri, vscode.Uri.joinPath(document.uri, '..')]
     };
     this.activeWebview = webview;
+    this.webviews.add(webview);
     webviewPanel.onDidChangeViewState(e => {
       if (e.webviewPanel.active) { this.activeWebview = e.webviewPanel.webview; }
     });
@@ -181,11 +183,14 @@ class MarkdownWordEditorProvider {
           break;
         }
         case 'saveSetting': {
-          // 视图设置持久化（F16 页面设置等）：优先工作区级，失败回退全局
+          // 视图设置持久化（F16 页面设置等）：优先工作区级，失败回退全局；
+          // msg.global 标记跨项目偏好（如缩放，issue #2：2K 屏缩放应全局记忆）直接写用户级
           const fullKey = (msg.section ? msg.section + '.' : '') + msg.key;
-          const target = vscode.workspace.workspaceFolders
-            ? vscode.ConfigurationTarget.Workspace
-            : vscode.ConfigurationTarget.Global;
+          const target = msg.global
+            ? vscode.ConfigurationTarget.Global
+            : (vscode.workspace.workspaceFolders
+              ? vscode.ConfigurationTarget.Workspace
+              : vscode.ConfigurationTarget.Global);
           vscode.workspace.getConfiguration('markdownWord').update(fullKey, msg.value, target)
             .then(() => { webview.postMessage({ type: 'settingSaved', key: fullKey, value: msg.value }); },
               err => { webview.postMessage({ type: 'info', text: '设置保存失败：' + String(err && err.message || err) }); });
@@ -262,6 +267,7 @@ class MarkdownWordEditorProvider {
 
     webviewPanel.onDidDispose(() => {
       changeSubscription.dispose();
+      this.webviews.delete(webview);
       if (this.activeWebview === webview) { this.activeWebview = null; }
     });
   }
@@ -293,8 +299,25 @@ class MarkdownWordEditorProvider {
       },
       ui: {
         language: cfg.get('ui.language') || 'auto'
+      },
+      view: {
+        zoom: this.readZoom()
       }
     };
+  }
+
+  /** F17 缩放（issue #2）：读取全局记忆的缩放百分比并钳制到 75–200 */
+  readZoom() {
+    const raw = +vscode.workspace.getConfiguration('markdownWord').get('view.zoom');
+    return Math.min(200, Math.max(75, Math.round(raw) || 100));
+  }
+
+  /** 缩放变更（任一文档调整或用户手改 settings.json）→ 广播到所有已打开文档实时跟随 */
+  broadcastZoom() {
+    const v = this.readZoom();
+    this.webviews.forEach(w => {
+      try { w.postMessage({ type: 'zoomChanged', zoom: v }); } catch (_e) { /* 已销毁的 webview 忽略 */ }
+    });
   }
 
   resolveRelative(docUri, rel) {
@@ -391,6 +414,12 @@ function activate(context) {
   );
   const outlineView = vscode.window.createTreeView('markdownWordOutline', { treeDataProvider: outlineProvider });
 
+  // 缩放全局联动（issue #2）：saveSetting 写配置与手改 settings.json 都会触发此事件，
+  // 统一经 broadcastZoom 广播——已打开的其他文档无需重开即跟随新缩放
+  const zoomWatch = vscode.workspace.onDidChangeConfiguration(e => {
+    if (e.affectsConfiguration('markdownWord.view.zoom')) { provider.broadcastZoom(); }
+  });
+
   const sendToActive = payload => {
     if (provider.activeWebview) { provider.activeWebview.postMessage(payload); }
     else { vscode.window.showWarningMessage('Markdown Word: 请先打开一个 Markdown 文档'); }
@@ -407,7 +436,7 @@ function activate(context) {
     vscode.commands.registerCommand('wysiwygMarkdown.gotoHeading', text => sendToActive({ type: 'gotoHeading', text: text }))
   ];
 
-  context.subscriptions.push(registration, outlineView, ...cmds);
+  context.subscriptions.push(registration, outlineView, zoomWatch, ...cmds);
 }
 
 function deactivate() { /* nothing */ }

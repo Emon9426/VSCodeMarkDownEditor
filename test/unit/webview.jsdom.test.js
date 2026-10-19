@@ -243,6 +243,78 @@ test('页面设置：saveSetting 消息持久化', async () => {
   assert.ok(/559px/.test(q('#main').style.getPropertyValue('--page-width')), 'A5 宽度变量应用');
 });
 
+// ================= F17 缩放全局记忆（issue #2：跨文档应用 + 重启保持） =================
+test('缩放 init：view.zoom=150 → 三模式字号同步缩放，且不回写配置', () => {
+  const before = postMessages().filter(m => m.type === 'saveSetting').length;
+  win.__onMessage({ data: { type: 'init', text: '# 缩放记忆\n\n正文。\n', settings: { view: { zoom: 150 } } } });
+  assert.strictEqual(q('#editor').style.fontSize, '22.5px', '所见即所得 15px × 150%');
+  assert.strictEqual(q('#srcTextarea').style.fontSize, '21px', '源码 14px × 150%');
+  assert.strictEqual(q('.pv-inner').style.fontSize, '22.5px', '分屏预览 15px × 150%');
+  assert.ok(qa('.fddl').some(f => f.textContent === '150%'), '视图页签显示 150%');
+  assert.ok(qa('#rp-home .fddl')[2].textContent.indexOf('22.5') !== -1, '字号下拉显示有效字号 22.5');
+  assert.strictEqual(postMessages().filter(m => m.type === 'saveSetting').length, before, 'init 只应用不回写');
+});
+
+test('缩放按钮：zoomIn 步进 +10 → saveSetting 全局用户级持久化', () => {
+  win.__onMessage({ data: { type: 'init', text: 'x\n', settings: { view: { zoom: 100 } } } }); // 重置为 100%（宿主 init 总会下发 view.zoom）
+  const before = postMessages().filter(m => m.type === 'saveSetting').length;
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-view'));
+  click(q('#rp-view .rbtn[data-cmd="zoomIn"]'));
+  const saved = postMessages().filter(m => m.type === 'saveSetting');
+  assert.strictEqual(saved.length, before + 1, '发出持久化消息');
+  assert.strictEqual(JSON.stringify(saved.pop()), JSON.stringify({ type: 'saveSetting', section: 'view', key: 'zoom', value: 110, global: true }), 'view.zoom=110 写用户级');
+  assert.strictEqual(q('#editor').style.fontSize, '16.5px', '字号即时生效');
+  // 连按到上限：钳制 200，不重复发消息（200 到顶后再按无变化即不发）
+  for (let i = 0; i < 12; i++) { click(q('#rp-view .rbtn[data-cmd="zoomIn"]')); }
+  const saved2 = postMessages().filter(m => m.type === 'saveSetting');
+  assert.strictEqual(saved2.length, before + 10, '共发出 9 次步进 + 初始 1 次（110→200）');
+  assert.strictEqual(saved2.pop().value, 200, '最终 200%');
+  assert.strictEqual(q('#editor').style.fontSize, '30px', '钳制到 200%');
+});
+
+test('缩放广播：zoomChanged → 实时跟随且不回写（防保存循环）', () => {
+  const before = postMessages().filter(m => m.type === 'saveSetting').length;
+  win.__onMessage({ data: { type: 'zoomChanged', zoom: 125 } });
+  assert.strictEqual(q('#editor').style.fontSize, '18.8px', '15px × 125%');
+  assert.strictEqual(q('#srcTextarea').style.fontSize, '17.5px', '源码 14px × 125%');
+  assert.ok(qa('.fddl').some(f => f.textContent === '125%'), '显示同步');
+  assert.strictEqual(postMessages().filter(m => m.type === 'saveSetting').length, before, '广播只应用不保存');
+});
+
+test('缩放钳制：非法值折入 75–200', () => {
+  win.__onMessage({ data: { type: 'zoomChanged', zoom: 500 } });
+  assert.strictEqual(q('#editor').style.fontSize, '30px', '上限 200');
+  win.__onMessage({ data: { type: 'zoomChanged', zoom: 10 } });
+  assert.strictEqual(q('#editor').style.fontSize, '11.3px', '下限 75（15 × 0.75 = 11.25 → 11.3）');
+});
+
+test('缩放档位面板：开始页签「字号」下拉 → 选 90% 持久化 + 三处联动', () => {
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-home'));
+  const sizeDdl = qa('#rp-home .fddl')[2];
+  click(sizeDdl);
+  const panel = q('#zoomPanel');
+  assert.ok(panel, '档位面板弹出');
+  assert.strictEqual(qa('#zoomPanel .fitem').length, 8, '8 个档位');
+  assert.ok(qa('#zoomPanel .fitem.on').length === 1 && qa('#zoomPanel .fitem.on')[0].textContent.indexOf('75%') !== -1, '当前档（75%）高亮');
+  click(qa('#zoomPanel .fitem').find(i => i.textContent.indexOf('90%') !== -1));
+  const saved = postMessages().filter(m => m.type === 'saveSetting').pop();
+  assert.strictEqual(saved.section + '.' + saved.key + '=' + saved.value, 'view.zoom=90', '档位选择持久化');
+  assert.ok(saved.global === true, '全局用户级');
+  assert.strictEqual(q('#editor').style.fontSize, '13.5px', '所见即所得 15 × 0.9');
+  assert.strictEqual(q('#srcTextarea').style.fontSize, '12.6px', '源码 14 × 0.9');
+  assert.ok(!q('#zoomPanel'), '选择后面板关闭');
+  assert.ok(sizeDdl.textContent.indexOf('13.5') !== -1, '字号下拉标签显示有效字号');
+});
+
+test('缩放档位面板：视图页签百分比下拉同样可弹出', () => {
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-view'));
+  const pct = qa('#rp-view .fddl').find(f => f.textContent.indexOf('%') !== -1);
+  click(pct);
+  assert.ok(q('#zoomPanel'), '档位面板弹出');
+  click(qa('#zoomPanel .fitem').find(i => i.textContent.indexOf('100%') !== -1)); // 复位到 100%
+  assert.strictEqual(q('#editor').style.fontSize, '15px', '复位 100%');
+});
+
 // ================= 回归：源码模式与页面尺寸一致 =================
 test('源码模式：textarea 内容同步 + 纸张宽度变量共用 + 原生编辑器入口', () => {
   win.__onMessage({ data: { type: 'init', text: '# 源码测试\n\n段落。\n', settings: { page: { size: 'a4' } } } });
