@@ -10,9 +10,9 @@
 Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双语界面。
 
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
-[![Tests](https://img.shields.io/badge/tests-230%20passed-brightgreen)](#开发与测试)
+[![Tests](https://img.shields.io/badge/tests-233%20passed-brightgreen)](#开发与测试)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#许可证)
-[![Version](https://img.shields.io/badge/version-1.9.0-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.9.1-8A2BE2)](CHANGELOG.md)
 
 **磁盘上永远是标准 Markdown** —— 可视化编辑零语法妥协，往返保真。
 
@@ -279,8 +279,8 @@ Ribbon 与斜杠菜单共用 Emoji 面板（分类 + 搜索），
 | 设置 | 默认 | 说明 |
 |---|---|---|
 | `markdownWord.defaultMode` | `wysiwyg` | 打开文档的默认模式（`wysiwyg` / `source` / `split`） |
-| `markdownWord.editor.fontFamilyLatin` | 跟随 | 西文字体 |
-| `markdownWord.editor.fontFamilyCJK` | 跟随 | 中文字体（微软雅黑 / 宋体 / 楷体 / 思源黑体 / 霞鹜文楷…） |
+| `markdownWord.editor.fontFamilyLatin` | 跟随 | 默认西文字体；设置页修改**即时生效**，描述里有「从本机已安装字体中选择…」链接（v1.9.1） |
+| `markdownWord.editor.fontFamilyCJK` | `Microsoft YaHei` | 默认中文字体；设置页修改**即时生效**，描述里有「从本机已安装字体中选择…」链接（v1.9.1） |
 | `markdownWord.editor.fontSize` | `15` | 正文字号 |
 | `markdownWord.editor.codeFontFamily` | `Consolas` | 代码块 / 行内代码等宽字体 |
 | `markdownWord.image.saveFolder` | `./images` | 粘贴图片保存目录 |
@@ -621,8 +621,8 @@ Fully follows the VS Code theme (CSS variables); dark mode has dedicated colors 
 | Setting | Default | Description |
 |---|---|---|
 | `markdownWord.defaultMode` | `wysiwyg` | Default mode when opening a document (`wysiwyg` / `source` / `split`) |
-| `markdownWord.editor.fontFamilyLatin` | follow | Latin font |
-| `markdownWord.editor.fontFamilyCJK` | follow | CJK font (Microsoft YaHei / SimSun / KaiTi / Source Han Sans / LXGW WenKai…) |
+| `markdownWord.editor.fontFamilyLatin` | follow | Default Latin font; edits in Settings **apply live**, with a "pick from installed fonts…" link (v1.9.1) |
+| `markdownWord.editor.fontFamilyCJK` | follow | Default CJK font; edits in Settings **apply live**, with a "pick from installed fonts…" link (v1.9.1) |
 | `markdownWord.editor.fontSize` | `15` | Body font size |
 | `markdownWord.editor.codeFontFamily` | `Consolas` | Monospace font for code blocks / inline code |
 | `markdownWord.image.saveFolder` | `./images` | Folder for pasted images |

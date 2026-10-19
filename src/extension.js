@@ -343,6 +343,19 @@ class MarkdownWordEditorProvider {
     });
   }
 
+  /** 字体设置变更（用户在设置页改 fontFamilyLatin/CJK）→ 广播到所有已打开文档即时应用（v1.9.1） */
+  broadcastFonts() {
+    const cfg = vscode.workspace.getConfiguration('markdownWord');
+    const msg = {
+      type: 'fontSettingChanged',
+      latin: cfg.get('editor.fontFamilyLatin') || '',
+      cjk: cfg.get('editor.fontFamilyCJK') || ''
+    };
+    this.webviews.forEach(w => {
+      try { w.postMessage(msg); } catch (_e) { /* 已销毁的 webview 忽略 */ }
+    });
+  }
+
   resolveRelative(docUri, rel) {
     if (!rel || /^[a-z]+:\/\//i.test(rel)) { return null; } // 外链
     const dir = vscode.Uri.joinPath(docUri, '..');
@@ -437,10 +450,11 @@ function activate(context) {
   );
   const outlineView = vscode.window.createTreeView('markdownWordOutline', { treeDataProvider: outlineProvider });
 
-  // 缩放全局联动（issue #2）：saveSetting 写配置与手改 settings.json 都会触发此事件，
-  // 统一经 broadcastZoom 广播——已打开的其他文档无需重开即跟随新缩放
-  const zoomWatch = vscode.workspace.onDidChangeConfiguration(e => {
+  // 配置全局联动（issue #2 / v1.9.1）：saveSetting 写配置与设置页/手改 settings.json 都会触发此事件，
+  // 统一广播——已打开的其他文档无需重开即跟随新缩放/新字体
+  const configWatch = vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('markdownWord.view.zoom')) { provider.broadcastZoom(); }
+    if (e.affectsConfiguration('markdownWord.editor.fontFamilyLatin') || e.affectsConfiguration('markdownWord.editor.fontFamilyCJK')) { provider.broadcastFonts(); }
   });
 
   const sendToActive = payload => {
@@ -456,10 +470,13 @@ function activate(context) {
     vscode.commands.registerCommand('wysiwygMarkdown.pageSetup', () => sendToActive({ type: 'command', cmd: 'pageSetup' })),
     vscode.commands.registerCommand('wysiwygMarkdown.exportHtml', () => sendToActive({ type: 'command', cmd: 'exportHtml' })),
     vscode.commands.registerCommand('wysiwygMarkdown.exportPdf', () => sendToActive({ type: 'command', cmd: 'exportPdf' })),
-    vscode.commands.registerCommand('wysiwygMarkdown.gotoHeading', text => sendToActive({ type: 'gotoHeading', text: text }))
+    vscode.commands.registerCommand('wysiwygMarkdown.gotoHeading', text => sendToActive({ type: 'gotoHeading', text: text })),
+    // v1.9.1：设置页「从本机已安装字体中选择…」命令链接入口（转发字体面板，锚点用状态栏向上展开）
+    vscode.commands.registerCommand('wysiwygMarkdown.pickFontLatin', () => sendToActive({ type: 'command', cmd: 'pickFontLatin' })),
+    vscode.commands.registerCommand('wysiwygMarkdown.pickFontCJK', () => sendToActive({ type: 'command', cmd: 'pickFontCJK' }))
   ];
 
-  context.subscriptions.push(registration, outlineView, zoomWatch, ...cmds);
+  context.subscriptions.push(registration, outlineView, configWatch, ...cmds);
 }
 
 function deactivate() { /* nothing */ }

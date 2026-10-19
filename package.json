@@ -2,7 +2,7 @@
   "name": "wysiwyg-markdown-editor",
   "displayName": "Markdown Word — WYSIWYG Markdown Editor",
   "description": "Word 式所见即所得 Markdown 编辑器：两行图标化 Ribbon、可视化表格、图片粘贴落盘、Confluence 式斜杠菜单、代码块（含 PL/SQL）等宽字体",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "publisher": "EmonZhang3438",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -73,6 +73,14 @@
       {
         "command": "wysiwygMarkdown.gotoHeading",
         "title": "Markdown Word: 大纲跳转（内部命令）"
+      },
+      {
+        "command": "wysiwygMarkdown.pickFontLatin",
+        "title": "Markdown Word: 从本机字体选择西文字体…（需打开 Markdown 文档）"
+      },
+      {
+        "command": "wysiwygMarkdown.pickFontCJK",
+        "title": "Markdown Word: 从本机字体选择中文字体…（需打开 Markdown 文档）"
       }
     ],
     "viewsContainers": {
@@ -135,12 +143,12 @@
         "markdownWord.editor.fontFamilyLatin": {
           "type": "string",
           "default": "",
-          "description": "正文西文字体（拉丁字符与数字）；留空跟随 VS Code。与中文字体组合回退链，中英文自动各用其字体"
+          "markdownDescription": "正文西文字体（拉丁字符与数字）；留空跟随 VS Code。与中文字体组合回退链，中英文自动各用其字体。修改后对已打开文档即时生效。也可[从本机已安装字体中选择…](command:wysiwygMarkdown.pickFontLatin)（需先打开一个 Markdown 文档）"
         },
         "markdownWord.editor.fontFamilyCJK": {
           "type": "string",
           "default": "Microsoft YaHei",
-          "description": "正文中文字体（CJK 字符）：Microsoft YaHei / SimSun / KaiTi / SimHei / FangSong / Source Han Sans SC 等"
+          "markdownDescription": "正文中文字体（CJK 字符）：Microsoft YaHei / SimSun / KaiTi / SimHei / FangSong / Source Han Sans SC 等。修改后对已打开文档即时生效。也可[从本机已安装字体中选择…](command:wysiwygMarkdown.pickFontCJK)（需先打开一个 Markdown 文档）"
         },
         "markdownWord.ai.enabled": {
           "type": "boolean",

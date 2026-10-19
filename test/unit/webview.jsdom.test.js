@@ -723,6 +723,36 @@ test('F18：状态栏 🅰 字体 → 西文/中文入口（原无响应）', ()
   assert.ok(q('#fontPanel'), '西文字体面板打开');
   assert.ok((q('#fontSearch') || {}).placeholder && q('#fontSearch').placeholder.length > 0, '面板带搜索框');
 });
+test('v1.9.1：fontSettingChanged（设置页改默认字体）→ 已打开文档即时应用', () => {
+  win.__onMessage({ data: { type: 'init', text: '正文\n', settings: { editor: {} } } });
+  win.__onMessage({ data: { type: 'fontSettingChanged', latin: 'Consolas', cjk: 'SimSun' } });
+  assert.ok(/Consolas/.test(q('#editor').style.fontFamily) && /SimSun/.test(q('#editor').style.fontFamily), '字体栈即时更新：' + q('#editor').style.fontFamily);
+  assert.ok(/SimSun/.test(q('#sbFont').textContent), '状态栏同步：' + q('#sbFont').textContent);
+  // 不回写配置（广播只应用）
+  const saves = postMessages().filter(m => m.type === 'saveSetting').length;
+  assert.strictEqual(postMessages().filter(m => m.type === 'saveSetting').length, saves, '无 saveSetting 回写');
+  // 再变更 → 跟随
+  win.__onMessage({ data: { type: 'fontSettingChanged', latin: '', cjk: 'KaiTi' } });
+  assert.ok(!/Consolas/.test(q('#editor').style.fontFamily) && /KaiTi/.test(q('#editor').style.fontFamily), '二次变更跟随');
+});
+test('v1.9.1：pickFontLatin/CJK 命令（设置页命令链接入口）→ 打开对应字体面板', () => {
+  win.__onMessage({ data: { type: 'init', text: '正文\n', settings: { editor: {} } } });
+  win.__onMessage({ data: { type: 'fonts', fonts: ['Arial', 'KaiTi', 'SimSun'] } });
+  win.__onMessage({ data: { type: 'command', cmd: 'pickFontLatin' } });
+  let panel = q('#fontPanel');
+  assert.ok(panel, '西文面板打开');
+  let item = qa('#fontList .fitem').find(i => i.textContent.indexOf('Arial') !== -1);
+  click(item);
+  let saved = postMessages().filter(m => m.type === 'saveSetting').pop();
+  assert.ok(saved && saved.key === 'fontFamilyLatin' && saved.value === 'Arial', '西文持久化：' + JSON.stringify(saved));
+  win.__onMessage({ data: { type: 'command', cmd: 'pickFontCJK' } });
+  panel = q('#fontPanel');
+  assert.ok(panel, '中文面板打开');
+  item = qa('#fontList .fitem').find(i => i.textContent.indexOf('SimSun') !== -1);
+  click(item);
+  saved = postMessages().filter(m => m.type === 'saveSetting').pop();
+  assert.ok(saved && saved.key === 'fontFamilyCJK' && saved.value === 'SimSun', '中文持久化：' + JSON.stringify(saved));
+});
 test('UI-04：右键菜单打开并执行「查找替换」', () => {
   const p = qa('#editor > p')[0];
   caretIn(p, true);

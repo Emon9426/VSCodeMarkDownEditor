@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.1（2026-10-20）
+
+设置页默认中英文字体（用户需求）：**`markdownWord.editor.fontFamilyLatin / fontFamilyCJK` 升级为设置页一等公民，修改后对已打开文档即时生效**。
+
+- **设置实时生效**：配置监听（`onDidChangeConfiguration`）从仅 `view.zoom` 扩展到两个字体设置——在设置页修改（或手改 settings.json）→ 宿主广播 `fontSettingChanged` 到**所有已打开文档**，即时应用字体栈与状态栏，无需重开文档（与缩放同一广播机制）
+- **设置页选择器入口**：两个设置项升级为 `markdownDescription`，描述内嵌**命令链接「从本机已安装字体中选择…」**（VS Code 设置页原生支持 command 链接）——点击经新命令 `wysiwygMarkdown.pickFontLatin / pickFontCJK` 转发到编辑器，弹出 F18 全量系统字体面板（240 字族、搜索、字体自预览），选中即写入设置；未打开文档时给出提示
+- 测试 233 项（+3）：webview 侧 fontSettingChanged 即时应用 + 状态栏同步 + 二次变更跟随 + 无回写；pickFontLatin/CJK 命令 → 面板 → 选择持久化；宿主侧字体配置变更 → 双 webview 广播 + 无关变更不广播
+
 ## 1.9.0（2026-10-19）
 
 F18 系统字体全量列表 + 悬空按钮清零（GitHub [issue #1](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/1)，用户 Suertida：字体区域无法展开下拉、无法修改字号）：**字体列表读取本机全部已安装字体，按名称排序、支持搜索；排查并修复全部无响应按钮**。
