@@ -644,18 +644,84 @@ test('F10：斜杠/命令插入脚注（sup 引用 + 文末定义）', async () 
   win.__onMessage({ data: { type: 'externalChange', text: md } });
   assert.ok(q('#editor sup.md-fn') && q('#editor .md-fn-def'), '往返保留');
 });
-test('F02：字体面板选择 → 应用 + 持久化消息', () => {
+test('F02/F18：字体面板 → listFonts 请求 → 系统列表渲染 + 选择持久化', () => {
   win.__onMessage({ data: { type: 'init', text: '正文\n', settings: { editor: {} } } });
   const ddls = qa('#rp-home .fddl');
   assert.ok(ddls.length >= 2, '字体下拉存在');
   ddls[1].dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
   const panel = q('#fontPanel');
   assert.ok(panel, '字体面板弹出');
-  const item = qa('#fontPanel .fitem').find(i => i.textContent.indexOf('宋体') !== -1);
+  assert.ok(postMessages().some(m => m.type === 'listFonts'), '首次打开发出 listFonts 请求');
+  assert.ok(q('#fontSearch'), '面板含搜索框');
+  assert.ok(/读取/.test(qa('#fontList .fitem.fload')[0].textContent), '回填前显示读取中占位');
+  // 宿主回填（宿主侧保证已排序），面板保持给定顺序渲染
+  win.__onMessage({ data: { type: 'fonts', fonts: ['Arial', 'KaiTi', 'Microsoft YaHei', 'Segoe UI', 'SimSun'] } });
+  const items = qa('#fontList .fitem');
+  assert.strictEqual(items.length, 6, '跟随 + 5 个系统字体');
+  assert.ok(items[0].textContent.indexOf('跟随 VS Code') !== -1, '跟随 VS Code 置顶');
+  assert.strictEqual(items.slice(1).map(i => i.textContent.replace('✓ ', '')).join(','), 'Arial,KaiTi,Microsoft YaHei,Segoe UI,SimSun', '按宿主排序渲染');
+  const item = items.find(i => i.textContent.indexOf('SimSun') !== -1);
   click(item);
   const saved = postMessages().filter(m => m.type === 'saveSetting').pop();
   assert.ok(saved && saved.key === 'fontFamilyCJK' && saved.value === 'SimSun', '持久化：' + JSON.stringify(saved));
   assert.ok(/SimSun/.test(q('#editor').style.fontFamily), '字体栈应用：' + q('#editor').style.fontFamily);
+});
+test('F18：字体搜索过滤 + 当前值高亮 + 二次打开走缓存', () => {
+  win.__onMessage({ data: { type: 'init', text: '正文\n', settings: { editor: { fontFamilyLatin: 'Segoe UI' } } } });
+  const ddls = qa('#rp-home .fddl');
+  ddls[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  // 缓存已回填（上一测试）→ 不再发 listFonts
+  const reqCount = postMessages().filter(m => m.type === 'listFonts').length;
+  const items = qa('#fontList .fitem');
+  assert.ok(items.length >= 2, '缓存列表直接渲染');
+  const on = q('#fontList .fitem.on');
+  assert.ok(on && on.textContent.indexOf('Segoe UI') !== -1, '当前值 Segoe UI 高亮');
+  // 搜索 ya → 仅 Microsoft YaHei
+  const search = q('#fontSearch');
+  search.value = 'ya';
+  search.dispatchEvent(new win.Event('input', { bubbles: true }));
+  const filtered = qa('#fontList .fitem').filter(i => !/读取|无匹配/.test(i.textContent));
+  assert.strictEqual(filtered.length, 1, '过滤后仅 1 项');
+  assert.ok(filtered[0].textContent.indexOf('Microsoft YaHei') !== -1, '命中 Microsoft YaHei');
+  assert.strictEqual(postMessages().filter(m => m.type === 'listFonts').length, reqCount, '二次打开不发 listFonts（客户端缓存）');
+});
+test('F18：H▾ 快速样式 → 标题 4–6 菜单（原点击无响应）', () => {
+  win.__onMessage({ data: { type: 'init', text: '标题段落\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  caretIn(p, true);
+  const btn = q('#rp-home .rbtn[data-cmd="hmore"]');
+  assert.ok(btn, 'H▾ 按钮存在');
+  click(btn);
+  const menu = q('#cmdMenu');
+  assert.ok(menu, '菜单弹出');
+  const labels = qa('#cmdMenu .fitem').map(i => i.textContent);
+  assert.ok(labels.length === 4 && labels.join('|').indexOf('标题 4') !== -1 && labels.join('|').indexOf('正文') !== -1, '含 标题4/5/6/正文');
+  click(qa('#cmdMenu .fitem').find(i => i.textContent.indexOf('标题 4') !== -1));
+  assert.ok(!q('#cmdMenu'), '选择后菜单关闭');
+  assert.ok(q('#editor h4'), '段落升级为 H4');
+});
+test('F18：📋 粘贴按钮 → 剪切/复制/粘贴菜单（原仅 toast）', () => {
+  win.__onMessage({ data: { type: 'init', text: '正文\n', settings: {} } });
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-home'));
+  click(q('#rp-home .rbtn[data-cmd="paste"]'));
+  const menu = q('#cmdMenu');
+  assert.ok(menu, '剪贴板菜单弹出');
+  const labels = qa('#cmdMenu .fitem').map(i => i.textContent);
+  assert.ok(labels.length === 3 && labels.join('|').indexOf('剪切') !== -1 && labels.join('|').indexOf('复制') !== -1 && labels.join('|').indexOf('粘贴') !== -1, '三项齐全');
+  // jsdom 无 execCommand/剪贴板权限 → 优雅降级（toast），不抛错
+  click(qa('#cmdMenu .fitem').find(i => i.textContent.indexOf('复制') !== -1));
+  assert.ok(!q('#cmdMenu'), '菜单关闭');
+});
+test('F18：状态栏 🅰 字体 → 西文/中文入口（原无响应）', () => {
+  win.__onMessage({ data: { type: 'init', text: '正文\n', settings: {} } });
+  click(q('#sbFont'));
+  const menu = q('#cmdMenu');
+  assert.ok(menu, '入口菜单弹出');
+  const labels = qa('#cmdMenu .fitem').map(i => i.textContent);
+  assert.ok(labels.join('|').indexOf('西文字体') !== -1 && labels.join('|').indexOf('中文字体') !== -1, '两个入口');
+  click(qa('#cmdMenu .fitem').find(i => i.textContent.indexOf('西文字体') !== -1));
+  assert.ok(q('#fontPanel'), '西文字体面板打开');
+  assert.ok((q('#fontSearch') || {}).placeholder && q('#fontSearch').placeholder.length > 0, '面板带搜索框');
 });
 test('UI-04：右键菜单打开并执行「查找替换」', () => {
   const p = qa('#editor > p')[0];
@@ -945,6 +1011,97 @@ test('F06 图片对齐：工具条设置 → class/align → 序列化 <img alig
   win.__onMessage({ data: { type: 'init', text: 'P <img src="x.png" alt="a" align="right"> 混排\n', settings: {} } });
   const img2 = qa('#editor img[data-src="x.png"]')[0];
   assert.ok(img2 && img2.classList.contains('md-img-r') && img2.getAttribute('align') === 'right', '白名单还原 align=right + class');
+});
+// ================= 全量按钮穷举（复查：确保所有按钮功能已实现） =================
+// 方法：每条命令前重新 init（消除前序命令改变 DOM 结构造成的状态耦合），点击后断言
+// 「DOM / postMessage / execCommand 调用 / 浮层 / 模式 / toast」至少一项变化。
+// jsdom 环境限制的两处以桩验证链路：document.execCommand（bold 等经 execSimple）、
+// HTMLInputElement.click（image 直开原生文件选择器）；rowUp 等边界静默（首行无上移）
+// 属预期产品行为，测试中按命令选择合适单元格。
+test('全量按钮穷举：四个页签 + 表格工具条逐一点击，每个命令均产生可观察效果', async () => {
+  const DOC = '# 标题\n\n段落甲，这段文字用于格式化选中。\n\n- 列表项一\n- 列表项二\n\n| 表头1 | 表头2 |\n| --- | --- |\n| 单元格A | 单元格B |\n\n结尾段落。\n';
+  const OVERLAYS = ['#cmdMenu', '#zoomPanel', '#fontPanel', '#pagePanel', '#tablePicker', '#emojiPanel', '#findBar', '#aiCard', '#dlgMask'];
+  const execCalls = [];
+  doc.execCommand = cmd => { execCalls.push(cmd); return true; };
+  const inputClicks = [];
+  win.HTMLInputElement.prototype.click = function () { inputClicks.push(this); };
+  const resetDoc = () => {
+    win.__onMessage({ data: { type: 'init', text: DOC, settings: {} } });
+    const t = q('#toast'); if (t) { t.textContent = ''; }
+    // 动态创建型浮层（hide 即 remove）直接移除；单例浮层（tablePicker/emojiPanel/pagePanel
+    // 为模块级引用，remove 后 show 会悬空于文档外）只隐藏
+    ['#cmdMenu', '#zoomPanel', '#fontPanel'].forEach(s => { const el = q(s); if (el) { el.remove(); } });
+    ['#tablePicker', '#emojiPanel', '#pagePanel', '#findBar', '#dlgMask'].forEach(s => { const el = q(s); if (el) { el.style.display = 'none'; } });
+  };
+  const snapshot = () => JSON.stringify([
+    q('#app') ? q('#app').innerHTML.length : -1,
+    postMessages().length,
+    execCalls.length,
+    q('#editor') ? q('#editor').innerHTML.length : -1,
+    OVERLAYS.filter(s => { const el = q(s); return el && (el.style.display === 'block' || el.style.display === 'flex' || s === '#fontPanel'); }).length,
+    doc.body.className,
+    (q('#toast') || { textContent: '' }).textContent
+  ]);
+  const selIn = el => {
+    const r = doc.createRange(); r.selectNodeContents(el);
+    sel().removeAllRanges(); sel().addRange(r);
+    doc.dispatchEvent(new win.Event('selectionchange'));
+  };
+  const MODE_SEQ = ['mSource', 'mWysiwyg', 'mSplit', 'mWysiwyg'];
+  const failedList = []; const covered = [];
+  const btns = qa('.rbtn[data-cmd]');
+  assert.ok(btns.length >= 45, '按钮总数 ' + btns.length);
+  for (const btn of btns) {
+    const cmd = btn.dataset.cmd;
+    if (covered.indexOf(cmd) !== -1) { continue; }
+    covered.push(cmd);
+    if (MODE_SEQ.indexOf(cmd) !== -1) { continue; } // 模式命令走单独序列
+    resetDoc();
+    selIn(qa('#editor > p')[0]); // 段落选区：格式/块/插入类生效；表格类得到 toast 提示亦为效果
+    const before = snapshot();
+    click(btn);
+    await wait(12); // drawio/exportPdf 等含异步消息
+    const changed = snapshot() !== before || (cmd === 'image' && inputClicks.length > 0);
+    if (!changed) { failedList.push(cmd + '@p'); }
+  }
+  // 表格上下文轮：按命令选择能让操作实际发生的单元格（边界静默属预期行为）
+  const TABLE_CMDS = ['rowAbove', 'rowBelow', 'delRow', 'colLeft', 'colRight', 'delCol', 'alLeft', 'alCenter', 'alRight', 'toggleHead', 'rowUp', 'rowDown', 'colMoveL', 'colMoveR', 'delTable'];
+  for (const c of TABLE_CMDS) {
+    resetDoc();
+    const cells = qa('#editor td, #editor th');
+    const pick = { rowUp: cells[2], rowDown: cells[0], colMoveL: cells[1], colMoveR: cells[0] }[c] || cells[0];
+    selIn(pick);
+    const before = snapshot();
+    click(q('.rbtn[data-cmd="' + c + '"]'));
+    await wait(8);
+    if (snapshot() === before) { failedList.push(c + '@t'); }
+  }
+  // 模式序列（mWysiwyg 仅在非所见即所得时才有可观察变化）——连续切换、不 resetDoc（init 会复位模式）
+  const modeBtn = c => qa('.rbtn[data-cmd="' + c + '"]')[0];
+  resetDoc();
+  for (const c of MODE_SEQ) {
+    selIn(qa('#editor > p')[0]);
+    const before = snapshot();
+    click(modeBtn(c));
+    await wait(8);
+    if (snapshot() === before) { failedList.push(c); }
+  }
+  click(modeBtn('mWysiwyg'));
+  assert.ok(covered.length + 4 >= 47, '覆盖命令数 ' + (covered.length + 4));
+  assert.deepStrictEqual(failedList, [], '点击后无任何效果的按钮: ' + failedList.join(', '));
+  // 链路直接证据：execCommand 桩被 bold/italic 等真实调用；image 触发原生文件选择器 click
+  assert.ok(execCalls.indexOf('bold') !== -1 && execCalls.indexOf('italic') !== -1, 'execSimple 链路: ' + execCalls.slice(0, 8).join(','));
+  assert.ok(inputClicks.some(i => i.type === 'file'), 'image 按钮触发文件选择器');
+  // 新修复的缩进按钮专项：列表第二项内 indent → 嵌套到前项（首项无前驱、静默不缩进——与 Tab 键一致）；outdent → 还原
+  resetDoc();
+  selIn(qa('#editor li')[1]);
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-home'));
+  click(q('#rp-home .rbtn[data-cmd="indent"]'));
+  assert.ok(qa('#editor ul ul').length + qa('#editor ol ol').length >= 1, 'indent 产生嵌套列表');
+  const li2 = qa('#editor ul ul li, #editor ol ol li')[0] || qa('#editor li')[0];
+  selIn(li2);
+  click(q('#rp-home .rbtn[data-cmd="outdent"]'));
+  assert.ok(qa('#editor ul ul').length + qa('#editor ol ol').length === 0, 'outdent 还原嵌套');
 });
 
 chain.then(() => {

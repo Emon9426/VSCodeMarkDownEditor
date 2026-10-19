@@ -10,6 +10,7 @@ const assert = require('assert');
 const { JSDOM } = require('jsdom');
 
 const extCode = fs.readFileSync(path.join(__dirname, '../../src/extension.js'), 'utf8');
+const fontListCode = fs.readFileSync(path.join(__dirname, '../../src/fontList.js'), 'utf8');
 
 // vscode stub（自包含函数体，经 toString() 内联进 jsdom HTML——stub 不可引用外部闭包）
 function stubVscodeFactory() {
@@ -51,6 +52,7 @@ function stubVscodeFactory() {
       applyEdit: async () => true,
       onDidChangeTextDocument: () => new Disposable(),
       onDidChangeConfiguration: l => { configListeners.push(l); return new Disposable(); },
+      readdirSync: () => [], // F18：fontList 扫描走空目录（真实扫描在本机/真机验证）
       fs: {
         written: {},
         writeFile: async (uri, buf) => { api.workspace.fs.written[uri.path] = buf; },
@@ -67,10 +69,12 @@ function stubVscodeFactory() {
 const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' +
   '<script>window.vscode = (' + stubVscodeFactory.toString() + ')();' +
   'window.__pathStub = null;' +
-  'window.module = { exports: {} };' +
-  'window.exports = window.module.exports;' +
-  'window.require = function (n) { if (n === "vscode") { return window.vscode; } if (n === "path") { return window.__pathStub; } throw new Error("stub require: " + n); };' +
-  '</scr' + 'ipt>' +
+  // require stub 需先于 fontList 注入（其顶层 require fs/path/os）；'fs' 返回空目录形态（fontList 全程守卫）
+  'window.require = function (n) { if (n === "vscode") { return window.vscode; } if (n === "path") { return window.__pathStub; } if (n === "os") { return { homedir: function () { return "/home/u"; } }; } if (n === "fs") { return { readdirSync: function () { return []; }, existsSync: function () { return false; } }; } if (n === "./fontList") { return window.__flMod.exports; } throw new Error("stub require: " + n); };</script>' +
+  // F18：fontList.js 以 IIFE + 局部 module 求值（避免与 extension.js 的顶层 const 冲突），exports 存入 __flMod
+  '<script>(function () { var module = { exports: {} };' + fontListCode.replace(/<\/script/g, '<\\/script') + ';window.__flMod = module; })();</scr' + 'ipt>' +
+  '<script>window.module = { exports: {} };' +
+  'window.exports = window.module.exports;</script>' +
   // extension.js 字符串字面量中的闭合标签需转义（JS 字符串内 "\/" 与 "/" 等价，不改变语义）
   '<script>' + extCode.replace(/<\/script/g, '<\\/script') + '</scr' + 'ipt>' +
   '</body></html>';
@@ -301,6 +305,19 @@ test('F17 缩放全局联动：saveSetting(global) → 写用户级配置 → �
   vscode._configListeners.forEach(l => l({ affectsConfiguration: key => key === 'markdownWord.page.size' }));
   assert.strictEqual(a.posted.filter(m => m.type === 'zoomChanged').length, 1, '无关变更不广播');
   // 面板销毁后不再接收（webview 集合移除）
+});
+
+test('F18 listFonts：webview 请求 → 宿主扫描（stub 空目录）→ fonts 数组回传，缓存复用', async () => {
+  const provider = vscode._calls.providers[0].provider;
+  const mk = makePanel('# 文档\n');
+  provider.resolveCustomTextEditor(mk.doc, mk.panel, {});
+  listeners[0]({ type: 'listFonts' });
+  await new Promise(r => setTimeout(r, 60));
+  const msgs = posted.filter(m => m.type === 'fonts');
+  assert.ok(msgs.length === 1 && Array.isArray(msgs[0].fonts), '回传 fonts 数组（空目录兜底 []）');
+  listeners[0]({ type: 'listFonts' });
+  await new Promise(r => setTimeout(r, 30));
+  assert.strictEqual(posted.filter(m => m.type === 'fonts').length, 2, '第二次走缓存同样回复');
 });
 
 Promise.all(pending).then(() => {

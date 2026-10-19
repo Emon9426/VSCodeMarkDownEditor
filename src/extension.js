@@ -5,6 +5,7 @@
 'use strict';
 const vscode = require('vscode');
 const path = require('path');
+const { listSystemFonts } = require('./fontList');
 
 const VIEW_TYPE = 'wysiwygMarkdownEditor';
 
@@ -45,6 +46,21 @@ class MarkdownWordEditorProvider {
     this.context = context;
     this.activeWebview = null; // 当前激活面板的 webview（供命令转发）
     this.webviews = new Set(); // 全部存活 webview（缩放等全局设置广播到已打开文档）
+    this._fonts = null; // 系统字体列表缓存（issue #1：首扫后复用）
+  }
+
+  /** F18 系统字体（issue #1）：枚举本机全部已安装字族名（去重排序），扫描一次后缓存 */
+  getSystemFonts() {
+    if (this._fonts) { return Promise.resolve(this._fonts); }
+    if (!this._fontsPromise) {
+      this._fontsPromise = new Promise(resolve => {
+        let fonts = [];
+        try { fonts = listSystemFonts(); } catch (_e) { fonts = []; }
+        this._fonts = fonts;
+        resolve(fonts);
+      });
+    }
+    return this._fontsPromise;
   }
 
   // ================= F15 AI 通道（GitHub Copilot · Language Model API） =================
@@ -180,6 +196,13 @@ class MarkdownWordEditorProvider {
             } catch (_e) { /* 忽略非法路径 */ }
           });
           webview.postMessage({ type: 'imageMap', map: map });
+          break;
+        }
+        case 'listFonts': {
+          // F18 系统字体（issue #1）：webview 沙箱无法枚举系统字体，由宿主扫描后下发
+          this.getSystemFonts().then(fonts => {
+            webview.postMessage({ type: 'fonts', fonts: fonts });
+          });
           break;
         }
         case 'saveSetting': {

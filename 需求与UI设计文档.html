@@ -366,7 +366,7 @@
 <!-- ================= 2 需求梳理 ================= -->
 <section id="s2">
   <h2 class="sec"><span class="sec-no">2</span>需求梳理与优先级</h2>
-  <p class="sec-lead">用户原始诉求 → 完善后的完整需求。共归纳为 17 个功能模块，按 P0（MVP 必须）/ P1（v1.0）/ P2（后续版本）分级。v1.8.2 变更：新增 <b>F17 缩放全局记忆</b>（GitHub issue #2：缩放按全局用户级持久化，跨文档 / 重启保持，已打开文档实时广播同步，三模式统一生效）。v1.7 变更：新增 <b>F16 页面设置与外观</b>（纸张尺寸：适应屏幕 / 常见纸张，内容跟随重排；页面背景色与条纹）。v1.6：M1 开发交付（v1.0.0 vsix）。v1.5：性能专项。v1.4：需求跟踪总表。历史：v1.3 图标化 / i18n / Draw.io / Emoji MRU；v1.2 Ribbon 两行 / 中英文字体 / 等宽代码 / PL/SQL；v1.1 Confluence 菜单 / AI 助手 / PDF / 图片持久化。</p>
+  <p class="sec-lead">用户原始诉求 → 完善后的完整需求。共归纳为 18 个功能模块，按 P0（MVP 必须）/ P1（v1.0）/ P2（后续版本）分级。v1.9.0 变更：新增 <b>F18 系统字体全量列表与悬空按钮清零</b>（issue #1：字体下拉读取本机全部已安装字体、按名称排序、可搜索，修复 H▾/📋/状态栏 🅰 无响应）。v1.8.2 变更：新增 <b>F17 缩放全局记忆</b>（GitHub issue #2：缩放按全局用户级持久化，跨文档 / 重启保持，已打开文档实时广播同步，三模式统一生效）。v1.7 变更：新增 <b>F16 页面设置与外观</b>（纸张尺寸：适应屏幕 / 常见纸张，内容跟随重排；页面背景色与条纹）。v1.6：M1 开发交付（v1.0.0 vsix）。v1.5：性能专项。v1.4：需求跟踪总表。历史：v1.3 图标化 / i18n / Draw.io / Emoji MRU；v1.2 Ribbon 两行 / 中英文字体 / 等宽代码 / PL/SQL；v1.1 Confluence 菜单 / AI 助手 / PDF / 图片持久化。</p>
 
   <div class="card">
     <h3 class="sub" style="margin-top:0">2.1 原始诉求 → 完善后的需求</h3>
@@ -396,6 +396,7 @@
       <tr><td><span class="badge b-new">新增</span> 页面视图尺寸可调（Word 页面设置）</td><td>默认<b>适应屏幕宽度</b>（窗口缩放自动跟随）；可选常见纸张：A3 / A4 / A5 / B5 / Letter / Legal / 自定义宽度（96dpi 换算，如 A4=794px）；切换后内容<b>流式重排</b>（换行 / 表格收缩 / 图片等比缩放 / 代码块横向滚动）；与导出 PDF 联动（默认采用当前页面尺寸）；设置按工作区持久化、<b>不写入文档</b></td><td>F16 · UI-09</td></tr>
       <tr><td><span class="badge b-new">新增</span> 页面背景色与条纹</td><td>纸张背景色：跟随主题（默认）/ 白 / 护眼绿 / 羊皮纸 / 冰蓝 / 自定义取色；条纹：无 / 横线（信纸，对齐行高）/ 方格 / 点阵，与背景色叠加渲染；仅影响屏显与可选导出，不污染 Markdown 源码</td><td>F16 · UI-09</td></tr>
       <tr><td><span class="badge b-new">新增</span> 缩放比例全局记忆（GitHub issue #2，用户 Suertida：2K 屏每份文件都要重设）</td><td>视图缩放（75%–200%）按<b>全局用户级</b>持久化（跨文档、跨项目、重启保持）；调整后经宿主广播<b>实时同步所有已打开文档</b>；作用于所见即所得 / 源码 / 分屏三模式；开始页签「字号」与视图页签百分比下拉均可点开档位快选（75 / 90 / 100 / 110 / 125 / 150 / 175 / 200）</td><td>F17</td></tr>
+      <tr><td><span class="badge b-new">修复+增强</span> 字体无法选择/列表不含本机字体（GitHub issue #1，用户 Suertida：字体区域点不动、无法改字号）</td><td>字体下拉读取<b>本机全部已安装字体</b>（宿主扫描 TTF/OTF/TTC name 表，跨平台目录），<b>按字体名称排序</b>（拉丁字母序、汉字拼音序）+ 顶部搜索框实时过滤；每项以其自身字体渲染预览、当前值高亮滚动到可见；「跟随 VS Code」置顶、选区级应用保留；顺带排查修复其余无响应按钮（H▾ 标题 4–6 菜单、📋 剪切/复制/粘贴菜单、状态栏 🅰 双入口）</td><td>F18</td></tr>
       <tr><td><span class="badge b-new">补充</span> 支持所有常见 Markdown 功能</td><td>标题 H1–H6、粗斜删、行内代码、<b>高亮</b>、上下标、引用、代码块（语言选择+高亮）、数学公式（KaTeX）、Mermaid 图表、脚注、目录 TOC、分割线、链接、HTML 直写、Emoji</td><td>F02 · F03 · F09 · F10</td></tr>
       <tr><td><span class="badge b-new">补充</span> —（主动新增）</td><td>智能粘贴：从 Word / Excel / 网页复制内容自动转换为 Markdown（保留标题、粗斜、表格）；查找替换；导出 HTML / PDF / Word；字数统计；命令面板与自定义快捷键</td><td>F11 · F12 · F13 · F14</td></tr>
     </table>
@@ -422,6 +423,7 @@
       <tr><td>F15</td><td><b>AI 助手（GitHub Copilot）</b></td><td><span class="badge b-p1">P1 · v1.0</span></td><td>斜杠 AI 写作（大纲/模板/续写/总结）、选区 AI 改写润色、差异预览、模型切换</td></tr>
       <tr><td>F16</td><td><b>页面设置与外观</b></td><td><span class="badge b-p1">P1 · v1.7</span></td><td>纸张尺寸（适应屏幕 / A3–Legal / 自定义）内容流式重排；页面背景色与条纹（护眼 / 羊皮纸 / 横线 / 方格）</td></tr>
       <tr><td>F17</td><td><b>缩放全局记忆</b></td><td><span class="badge b-p1">P1 · v1.8</span></td><td>视图缩放全局用户级持久化（跨文档 / 重启），三模式统一生效，已打开文档实时广播同步</td></tr>
+      <tr><td>F18</td><td><b>系统字体全量列表</b></td><td><span class="badge b-p1">P1 · v1.9</span></td><td>字体下拉读取本机全部已安装字体（名称排序 + 搜索 + 预览），悬空按钮清零（H▾ / 📋 / 状态栏 🅰）</td></tr>
     </table>
     <p class="fig-note">注：P2（远期）条目在各模块详述中以 <span class="badge b-p2">P2</span> 标注，如 PicGo 图床上传、docx 导出、自定义 CSS 主题、斜杠菜单自定义项、AI 指令库与 AI 图表生成等。</p>
   </div>
@@ -649,6 +651,20 @@
       <li><b>设置项</b> — <code>markdownWord.view.zoom</code>（number，75–200，默认 100）；与页面尺寸相互独立（页面尺寸改纸张宽度并重排，缩放只改显示比例不重排，两者叠加，同 Word）。</li>
     </ul>
     <div class="accept"><b>验收：</b>文档 A 调至 150% → 切到已打开的文档 B 立即 150%（无需重开）；重启 VS Code 打开任意文档仍 150%；源码 / 分屏模式同样生效；手改 settings.json 中 view.zoom 后所有打开文档即时跟随；缩放变化不写入 .md 源码（diff 为空）。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F18</span><h3>系统字体全量列表与悬空按钮清零（GitHub issue #1）</h3><span class="badge b-p1">P1 · v1.9</span></div>
+    <p>用户 Suertida 报告：Ribbon 字体区域悬停变输入光标、点击既不展开下拉也无法修改字号。排查确认三层问题：字号下拉悬空（v1.8.2 已接缩放档位解决）、字体下拉为 8 项硬编码预设（读不到本机字体）、另有三处按钮从未绑定实现。本模块将字体列表升级为<b>读取本机全部已安装字体</b>，并把无响应按钮全部补齐——工具栏自此无悬空控件。</p>
+    <ul class="dots">
+      <li><b>系统字体枚举（宿主侧）</b> — 新增 <code>src/fontList.js</code>（纯 Node 无依赖）：扫描各平台字体目录（Windows 系统级 + 用户级 / macOS 三级 / Linux 常见路径），<b>两段式解析</b> sfnt name 表（name 表位于文件任意偏移、TTC 集合可达数十 MB——先读表目录定位再整块读取，每字体仅几 KB I/O）；字族名优先 nameID 16（排版字族）、英文名优先、仅有本地化名回退；去重后按 <code>zh-Hans-CN</code> 排序（拉丁按字母、汉字按拼音）。本机实测 240 字族 / 440ms，扫描一次缓存。</li>
+      <li><b>字体面板重做（webview 侧）</b> — 「Aa 西文」「汉 中」下拉与状态栏 🅰 均列<b>全部本机字体</b>：顶部搜索框实时过滤、每项以其自身字体渲染预览、当前值高亮并滚动到可见、「跟随 VS Code」置顶、选区级应用保留；靠近视口底部自动向上展开；<code>listFonts</code>/<code>fonts</code> 消息按需获取（webview 沙箱无法枚举系统字体，由宿主代理）。</li>
+      <li><b>H▾ 快速样式（修复）</b> — 原 runCommand 无 case、点击完全无响应；现弹出「标题 4 / 5 / 6 / 正文」菜单（Ctrl+4…6 等效）。</li>
+      <li><b>📋 剪贴板菜单（修复）</b> — 原仅弹提示，tooltip 承诺的 ▾ 子菜单从未实现；现弹出「剪切 / 复制 / 粘贴」三项（execCommand 剪切复制、剪贴板读取粘贴，无权限环境优雅降级提示快捷键）。</li>
+      <li><b>状态栏 🅰（修复）</b> — 原无点击响应；现弹出「西文字体 / 中文字体」双入口直达字体面板。</li>
+      <li><b>通用命令菜单</b> — 新增 <code>showCmdMenu</code> 组件，H▾ / 📋 / 🅰 三类菜单共用样式（图标列 + 标签）与定位（视口底部自动上翻）。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>字体下拉列出本机全部已安装字体且按名称排序（含搜索过滤）；选择任意字体即时生效、状态栏更新、settings 持久化；H▾ / 📋 / 状态栏 🅰 点击均有菜单弹出且条目执行正确；「跟随 VS Code」可一键还原。</div>
   </div>
 </section>
 
@@ -1524,7 +1540,7 @@
       <tr><td>—</td><td>快捷键体系（规避 VS Code 内置冲突，全量可自定义）</td><td><span class="badge b-p0">P0</span></td><td><a href="#s5">5 · 快捷键</a></td><td><span class="st st-dev">已开发待验收</span>核心绑定 15+；Ctrl+\` 等个别需真机确认冲突（2026-08-22）</td></tr>
       <tr><td>横切</td><td>性能专项（v1.5）：流畅度第一优先（键入 &lt;16ms / 60fps / 菜单 &lt;100ms / 首屏 &lt;300ms）+ 内存第二优先（空文档 &lt;150MB / 典型 &lt;300MB / 8h 无泄漏）</td><td><span class="badge b-p0">P0</span></td><td><a href="#s7">7 · 非功能</a> / <a href="#s8">8 · 技术</a></td><td><span class="st st-part">部分完成</span>v1.5.0：CI 基准 5 项（50/200KB parse/roundtrip/高亮/行内，宽松阈值防回退）✓；键入/滚动/内存指标需真机验收（2026-08-23）</td></tr>
       <tr><td colspan="5" style="background:#fffbeb;font-weight:700;color:#92400e">P1 · v1.0（第二批交付）</td></tr>
-      <tr><td>F02+</td><td>字体中英分设：西文 / 中文双下拉、字号、持久化、PDF 内嵌（v1.2）</td><td><span class="badge b-p1">P1 · v1.2</span></td><td><a href="#f02">3 · F02</a></td><td><span class="st st-dev">已开发待验收</span>v1.5.0：文档级回退链 ✓ + 选区级行内 span 持久化（白名单还原）✓；PDF 字体内嵌待（2026-08-23）</td></tr>
+      <tr><td>F02+</td><td>字体中英分设：西文 / 中文双下拉、字号、持久化、PDF 内嵌（v1.2）</td><td><span class="badge b-p1">P1 · v1.2</span></td><td><a href="#f02">3 · F02</a></td><td><span class="st st-done">已完成</span>v1.9.0：下拉升级为本机全部已安装字体（F18 系统字体全量列表）；v1.5.0：文档级回退链 ✓ + 选区级行内 span 持久化（白名单还原）✓；PDF 字体内嵌待（2026-10-19）</td></tr>
       <tr><td>F10</td><td>高级内容：公式 / Mermaid / 脚注 / TOC / 四色面板 / HTML 直写</td><td><span class="badge b-p1">P1</span></td><td><a href="#f10">3 · F10</a></td><td><span class="st st-dev">已开发待验收</span>v1.6.0 全量交付：脚注/TOC/面板 ✓ + <b>公式（自研 LaTeX 子集：$$块/$行内，双击编辑）</b> + <b>Mermaid（自研 graph TD/LR 子集 → SVG，双击编辑，不支持语法降级源码）</b>——外部库阻塞经自研渲染器解阻（2026-08-23）</td></tr>
       <tr><td>F10+</td><td>Draw.io 流程图嵌入编辑（.drawio.svg 持久化，M2 POC / M3 落地）（v1.3）</td><td><span class="badge b-p1">P1 · v1.3</span></td><td><a href="#f10">3 · F10</a> / <a href="#ui-08">UI-08</a></td><td><span class="st st-part">生态集成交付</span>v1.6.0：.drawio.svg/.png 引用渲染 ✓ + 右键"用 Draw.io 编辑"（vscode-drawio 并排打开）；简单图可用自研 Mermaid 子集替代；嵌入画布版待后续评估（2026-08-23）</td></tr>
       <tr><td>F10+</td><td>Emoji 面板 + MRU 置顶 + 斜杠直插（双入口实时同步）（v1.3）</td><td><span class="badge b-p1">P1 · v1.3</span></td><td><a href="#f10">3 · F10</a> / <a href="#ui-03">UI-03</a></td><td><span class="st st-todo">未开始</span></td></tr>
@@ -1535,6 +1551,7 @@
       <tr><td>F15</td><td>AI 助手（Copilot）：斜杠 AI 大纲 / 模板 / 续写 + 选区改写润色 + 差异预览（v1.1）</td><td><span class="badge b-p1">P1 · v1.1</span></td><td><a href="#f15">3 · F15</a> / <a href="#ui-07">UI-07</a></td><td><span class="st st-dev">已开发待验收</span>v1.5.0：vscode.lm 通道（engines ^1.95）、选区 AI 六动作+自定义指令+结果卡、斜杠 AI大纲/续写、未登录降级（2026-08-23）</td></tr>
       <tr><td>F16</td><td>页面设置与外观：纸张尺寸（适应屏幕 / A3–Legal / 自定义）内容流式重排；背景色与条纹（护眼绿 / 羊皮纸 / 横线 / 方格 / 点阵）（v1.7）</td><td><span class="badge b-p1">P1 · v1.7</span></td><td><a href="#f16">3 · F16</a> / <a href="#ui-09">UI-09</a></td><td><span class="st st-dev">已开发待验收</span>v1.1.0：全部预设 + 自定义 + 暗色变体 + 快选面板/状态栏入口，工作区持久化（2026-08-22）</td></tr>
       <tr><td>F17</td><td>缩放全局记忆：视图缩放（75–200%）全局用户级持久化，跨文档 / 跨项目 / 重启保持，已打开文档实时广播同步，三模式统一生效，档位快选面板（issue #2）（v1.8.2）</td><td><span class="badge b-p1">P1 · v1.8</span></td><td><a href="#f17">3 · F17</a></td><td><span class="st st-done">已完成</span>v1.8.2：view.zoom 用户级配置 + zoomChanged 广播 + 源码/分屏模式接入 + 字号下拉档位面板（原悬空 UI 修复），218 项测试；<b>真机验证通过（2026-10-19）</b>：A 调 120%→已打开 B 实时跟随 / 档位面板 150%→A 反向跟随 / 手改 settings.json→即时广播 / 重启→75% 记忆恢复 / 源码+分屏模式缩放正常 / .md 零污染</td></tr>
+      <tr><td>F18</td><td>系统字体全量列表与悬空按钮清零：字体下拉读取本机全部已安装字体（名称排序 + 搜索 + 字体自预览），修复 H▾ / 📋 / 状态栏 🅰 / indent·outdent 无响应（issue #1）（v1.9.0）</td><td><span class="badge b-p1">P1 · v1.9</span></td><td><a href="#f18">3 · F18</a></td><td><span class="st st-done">已完成</span>v1.9.0：fontList.js 跨平台枚举（240 字族/440ms）+ listFonts 消息 + 字体面板重做 + 悬空按钮全部补齐，230 项测试（含静态审计 57 按钮 + 动态穷举全覆盖）；<b>真机验证通过（2026-10-19）</b>：面板加载本机 240 字族按名称排序 / 选择 Microsoft YaHei 即时生效+持久化 / H▾、📋、🅰 菜单全部弹出且条目齐全；复查轮顺带修复 outdent 残留空子列表（键盘路径同源缺陷）</td></tr>
       <tr><td>UI-04</td><td>选区浮动工具栏（含 ✨ AI 按钮）与上下文右键菜单</td><td><span class="badge b-p1">P1</span></td><td><a href="#ui-04">4 · UI-04</a></td><td><span class="st st-part">部分完成</span>v1.4.0：选区格式条 ✓ + <b>右键菜单</b>（复制为 Markdown/表格快捷/查找替换）✓；AI 按钮待 F15（2026-08-23）</td></tr>
       <tr><td>—</td><td>大纲视图 / 面包屑 / 状态栏字数与 Copilot 指示</td><td><span class="badge b-p1">P1</span></td><td><a href="#f14">3 · F14</a></td><td><span class="st st-dev">已开发待验收</span>v1.5.0：大纲树 ✓ + 面包屑（标题栈算法）✓ + 状态栏字数 ✓；Copilot 状态指示随 AI 卡降级提示覆盖（2026-08-23）</td></tr>
       <tr><td colspan="5" style="background:#f8fafc;font-weight:700;color:#475569">P2 · 远期</td></tr>
@@ -1547,7 +1564,7 @@
 </main>
 
 <footer>
-  Markdown Word · 需求与 UI 设计文档 v1.8.2 评审稿 · 2026-10-19 · v1.8.2 变更：新增 F17 缩放全局记忆（issue #2，218 项测试）· v1.8 变更：F16 页面设置与外观实施交付（v1.1.0 vsix，48 项测试通过）· 历史变更见第 2 节 · 本文档可直接在浏览器中打开评审
+  Markdown Word · 需求与 UI 设计文档 v1.9.0 评审稿 · 2026-10-19 · v1.9.0 变更：新增 F18 系统字体全量列表与悬空按钮清零（issue #1，229 项测试，真机验证）· v1.8.2 变更：新增 F17 缩放全局记忆（issue #2，218 项测试）· v1.8 变更：F16 页面设置与外观实施交付（v1.1.0 vsix，48 项测试通过）· 历史变更见第 2 节 · 本文档可直接在浏览器中打开评审
 </footer>
 
 <script>

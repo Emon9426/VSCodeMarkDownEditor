@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.9.0（2026-10-19）
+
+F18 系统字体全量列表 + 悬空按钮清零（GitHub [issue #1](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/1)，用户 Suertida：字体区域无法展开下拉、无法修改字号）：**字体列表读取本机全部已安装字体，按名称排序、支持搜索；排查并修复全部无响应按钮**。
+
+- **系统字体全量列表（核心）**：新增 `src/fontList.js`（纯 Node 无依赖）——扫描各平台字体目录（Windows 系统级+用户级 / macOS 三级 / Linux 常见路径），两段式解析 TTF/OTF/TTC 的 sfnt name 表（name 表位于文件任意偏移，TTC 可达数十 MB，先读表目录定位再整块读取，每字体仅几 KB I/O），取字族名（优先 nameID 16 排版字族、英文名优先、仅有本地化名回退），去重后按 `zh-Hans-CN` 排序（拉丁按字母、汉字按拼音）；webview 经 `listFonts`/`fonts` 消息按需获取（宿主扫描一次缓存，本机实测 240 字族 / 440ms）
+- **字体面板重做**：「Aa 西文」「汉 中」下拉与状态栏 🅰 均列出**本机全部字体**（原为 8 项硬编码预设），顶部搜索框实时过滤、当前值高亮并滚动到可见、每项以其自身字体渲染预览；「跟随 VS Code」置顶、选区级应用保留
+- **H▾ 快速样式修复**：原 runCommand 无 case、点击完全无响应——现弹出「标题 4 / 标题 5 / 标题 6 / 正文」菜单
+- **📋 粘贴按钮修复**：原仅弹提示、tooltip 承诺的 ▾ 子菜单从未实现——现弹出「剪切 / 复制 / 粘贴」菜单（execCommand 剪切复制 + 剪贴板读取粘贴，无权限环境优雅降级提示 Ctrl+X/C/V）
+- **状态栏 🅰 字体指示修复**：原无点击响应——现弹出「西文字体 / 中文字体」入口直达字体面板（靠近视口底部自动向上展开）
+- 新增通用命令菜单组件（`showCmdMenu`），三类菜单共用样式与交互；字号下拉在 v1.8.2 已接缩放档位（issue #1 报障的"无法修改字体大小"入口已通）
+- 测试 229 项（+11）：fontList 解析单元 6 项（合成 name 表：英文名优先 / 中文回退 / nameID16 优先 / 平台 0 / 越界兜底）；webview 5 项（listFonts 请求 → fonts 回填渲染 → 选择持久化、搜索过滤 + 当前高亮 + 缓存复用、H▾ 菜单、📋 菜单、状态栏 🅰 入口）；宿主 1 项（listFonts → fonts 回传 + 缓存）
+- **全量按钮复查轮**：静态审计脚本（57 个按钮命令 + 19 个斜杠项逐一映射 runCommand/tableOp，`test/unit/audit-buttons.js` 常驻 runner）发现并修复 **indent/outdent 缩进按钮悬空**（仅 Tab/Shift+Tab 键盘路径可达，按钮点击落到 default 分支无动作——现作用于光标所在列表项）；动态穷举测试（四个页签 + 表格工具条逐一点击断言可观察效果，含段落/表格/模式三上下文）发现并修复 **outdent 残留空子列表**（嵌套项全部移出后空 `<ul>` 留在 DOM，键盘路径同样存在，可能序列化垃圾空列表）；复查后测试 230 项全过
+- **真机验证通过**（VS Code 1.142 + 安装 vsix，UI 自动化）：字体面板加载本机 240 个真实字族（Segoe UI / Microsoft YaHei / SimSun / KaiTi / JetBrains Mono / Noto Sans SC 等全部在列、按名称排序）；选择 Microsoft YaHei → 即时应用 + 状态栏更新 + settings 持久化；H▾ / 📋 / 状态栏 🅰 三处菜单全部弹出且条目齐全
+
 ## 1.8.2（2026-10-19）
 
 F17 缩放全局记忆（GitHub [issue #2](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/2)，用户 Suertida：2K 屏下文件 A 设好的缩放切到文件 B 不生效、重启后全部归零）：**视图缩放按全局用户级记忆，一处设置处处生效**。
