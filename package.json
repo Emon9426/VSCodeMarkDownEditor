@@ -2,7 +2,7 @@
   "name": "wysiwyg-markdown-editor",
   "displayName": "Markdown Word — WYSIWYG Markdown Editor",
   "description": "Word 式所见即所得 Markdown 编辑器：两行图标化 Ribbon、可视化表格、图片粘贴落盘、Confluence 式斜杠菜单、代码块（含 PL/SQL）等宽字体",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "publisher": "EmonZhang3438",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -211,6 +211,13 @@
             "点阵"
           ],
           "description": "页面条纹（与背景色叠加渲染，仅影响显示，不写入 Markdown）"
+        },
+        "markdownWord.view.zoom": {
+          "type": "number",
+          "default": 100,
+          "minimum": 75,
+          "maximum": 200,
+          "description": "编辑区缩放百分比（75–200）：作用于所见即所得 / 源码 / 分屏三模式；全局用户级记忆（跨文档、跨项目、重启保持），调整后实时同步所有已打开文档"
         }
       }
     }

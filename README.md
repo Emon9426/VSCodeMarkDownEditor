@@ -10,9 +10,9 @@
 Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双语界面。
 
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
-[![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](#开发与测试)
+[![Tests](https://img.shields.io/badge/tests-218%20passed-brightgreen)](#开发与测试)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#许可证)
-[![Version](https://img.shields.io/badge/version-1.8.1-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.2-8A2BE2)](CHANGELOG.md)
 
 **磁盘上永远是标准 Markdown** —— 可视化编辑零语法妥协，往返保真。
 
@@ -45,6 +45,7 @@ Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双
   - [查找替换](#10-查找替换)
   - [大纲视图与面包屑](#11-大纲视图与面包屑)
   - [页面设置与外观](#12-页面设置与外观)
+  - [缩放全局记忆](#12b-缩放全局记忆)
   - [图片粘贴持久化](#13-图片粘贴持久化)
   - [智能粘贴](#14-智能粘贴)
   - [脚注 · 目录 · 提示面板](#15-脚注--目录--提示面板)
@@ -193,6 +194,15 @@ Ribbon「插入 → ⬡」在文档目录 `diagrams/` 下创建 `.drawio.svg` �
 
 ![页面设置](docs/images/page-setup.png)
 
+### 12b. 缩放全局记忆
+
+视图页签 `A⁻ / A⁺`（75%–200%）或点击百分比 / 开始页签「字号」下拉选择档位：
+
+- **全局用户级记忆**（`markdownWord.view.zoom`）：跨文档、跨项目、重启 VS Code 全部保持，
+  2K / 4K 屏一次设置处处生效（[issue #2](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/2)）；
+- **已打开文档实时同步**：任一文档调整缩放，其余已打开文档立即跟随（含手改 settings.json）；
+- **三模式统一**：所见即所得、源码、分屏预览同步缩放；与纸张尺寸独立（缩放不重排）。
+
 ### 13. 图片：粘贴持久化 + 拖拽缩放 + 表格内嵌图
 
 - `Ctrl+V` 粘贴截图自动落盘（默认 `./images/文档名-时间戳.png`，可配置目录与命名），
@@ -273,6 +283,7 @@ Ribbon 与斜杠菜单共用 Emoji 面板（分类 + 搜索），
 | `markdownWord.page.size` | `fit` | 纸张尺寸（`fit` / `a3` / `a4` / `a5` / `b5` / `letter` / `legal` / `custom`） |
 | `markdownWord.page.background` | `auto` | 页面背景（预设名或 `#RRGGBB`） |
 | `markdownWord.page.pattern` | `none` | 条纹（`lines` / `grid` / `dots`） |
+| `markdownWord.view.zoom` | `100` | 缩放百分比（75–200，三模式统一；**全局用户级**记忆，跨文档 / 重启保持） |
 | `markdownWord.ai.enabled` | `true` | AI 助手总开关 |
 | `markdownWord.ai.model` | 自动 | 指定 Copilot 模型 |
 | `markdownWord.ui.language` | `auto` | 界面语言 |
@@ -364,6 +375,7 @@ Latin and CJK text each get their own font (Segoe UI × Microsoft YaHei); code a
   - [Find & Replace](#10-find--replace)
   - [Outline view & breadcrumbs](#11-outline-view--breadcrumbs)
   - [Page setup & appearance](#12-page-setup--appearance)
+  - [Zoom with global memory](#12b-zoom-with-global-memory)
   - [Persistent image paste](#13-persistent-image-paste)
   - [Smart paste](#14-smart-paste)
   - [Footnotes · TOC · callout panels](#15-footnotes--toc--callout-panels)
@@ -512,6 +524,16 @@ Status bar 📄 or Ribbon *View → Page*:
 
 ![Page setup](docs/images/page-setup.png)
 
+### 12b. Zoom with global memory
+
+*View* tab `A⁻ / A⁺` (75%–200%), or click the percentage / the *Home* "font size" dropdown to pick a level:
+
+- **Persisted at user level** (`markdownWord.view.zoom`): remembered across documents, projects and
+  VS Code restarts — set once on a 2K / 4K screen, effective everywhere ([issue #2](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/2));
+- **Live sync across open documents**: changing zoom in one document updates all other open ones instantly
+  (manual `settings.json` edits included);
+- **All three modes**: WYSIWYG, source and split preview scale together; independent of paper size (zoom never reflows).
+
 ### 13. Images: Persistent Paste + Drag-to-Resize + In-Table
 
 - `Ctrl+V` pastes screenshots and saves them to disk (default `./images/DocName-timestamp.png`,
@@ -595,6 +617,7 @@ Fully follows the VS Code theme (CSS variables); dark mode has dedicated colors 
 | `markdownWord.page.size` | `fit` | Paper size (`fit` / `a3` / `a4` / `a5` / `b5` / `letter` / `legal` / `custom`) |
 | `markdownWord.page.background` | `auto` | Page background (preset name or `#RRGGBB`) |
 | `markdownWord.page.pattern` | `none` | Pattern (`lines` / `grid` / `dots`) |
+| `markdownWord.view.zoom` | `100` | Zoom percent (75–200, all three modes; **user-level** memory across documents / restarts) |
 | `markdownWord.ai.enabled` | `true` | Master AI toggle |
 | `markdownWord.ai.model` | auto | Copilot model override |
 | `markdownWord.ui.language` | `auto` | UI language |

@@ -21,8 +21,10 @@ function stubVscodeFactory() {
   class Range { constructor(a, b, c, d) { this.args = [a, b, c, d]; } }
   class WorkspaceEdit { constructor() { this.edits = []; } replace(uri, range, text) { this.edits.push({ uri, range, text }); } }
   const configStore = {};
+  const configListeners = [];
   const api = {
     _calls: calls,
+    _configListeners: configListeners,
     EventEmitter: EventEmitter, TreeItem: TreeItem, TreeItemCollapsibleState: TreeItemCollapsibleState,
     Range: Range, WorkspaceEdit: WorkspaceEdit, Disposable: Disposable,
     ConfigurationTarget: { Global: 1, Workspace: 2 },
@@ -48,6 +50,7 @@ function stubVscodeFactory() {
       }),
       applyEdit: async () => true,
       onDidChangeTextDocument: () => new Disposable(),
+      onDidChangeConfiguration: l => { configListeners.push(l); return new Disposable(); },
       fs: {
         written: {},
         writeFile: async (uri, buf) => { api.workspace.fs.written[uri.path] = buf; },
@@ -265,6 +268,39 @@ test('saveImage：粘贴图片 → 写盘 images/ + 回传 relPath/webSrc（F06 
   assert.ok(msg && !msg.error, '回传 imageSaved');
   assert.ok(/images\/[^/]+\.png$/.test(msg.relPath), 'relPath 相对路径: ' + msg.relPath);
   assert.ok(/^webview:\/\//.test(msg.webSrc), 'webviewUri 可显示');
+});
+
+test('F17 缩放全局联动：saveSetting(global) → 写用户级配置 → 广播 zoomChanged 到所有已打开 webview', async () => {
+  const provider = vscode._calls.providers[0].provider;
+  // 两个文档（各自独立 webview + 独立消息捕获），模拟已打开的 A/B 两份文档
+  const mkPanel = () => {
+    const box = { posted: [], listeners: [] };
+    const webview = {
+      asWebviewUri: uri => ({ toString: () => 'webview://' + uri.path }),
+      postMessage: m => { box.posted.push(m); return Promise.resolve(); },
+      onDidReceiveMessage: l => { box.listeners.push(l); return { dispose() {} }; }
+    };
+    const panel = { webview: webview, onDidChangeViewState: () => ({ dispose() {} }), onDidDispose: () => ({ dispose() {} }) };
+    const doc = { uri: { toString: () => 'file:///' + Math.random().toString(36).slice(2) + '.md', scheme: 'file', path: '/x.md' }, getText: () => 'x', lineCount: 1 };
+    provider.resolveCustomTextEditor(doc, panel, {});
+    return box;
+  };
+  const a = mkPanel(), b = mkPanel();
+  // 文档 A 调整缩放 → saveSetting（global: true，issue #2 全局用户级）
+  a.listeners[0]({ type: 'saveSetting', section: 'view', key: 'zoom', value: 150, global: true });
+  await new Promise(r => setTimeout(r, 10));
+  assert.strictEqual(vscode.workspace.getConfiguration('markdownWord').get('view.zoom'), 150, '配置已写入');
+  // 配置变更事件（saveSetting 写入或手改 settings.json 均触发）→ 广播两个 webview
+  vscode._configListeners.forEach(l => l({ affectsConfiguration: key => key === 'markdownWord.view.zoom' }));
+  [a, b].forEach((box, i) => {
+    const zc = box.posted.filter(m => m.type === 'zoomChanged');
+    assert.strictEqual(zc.length, 1, 'webview ' + i + ' 收到一次广播');
+    assert.strictEqual(zc[0].zoom, 150, '广播值为 150');
+  });
+  // 无关配置变更不广播
+  vscode._configListeners.forEach(l => l({ affectsConfiguration: key => key === 'markdownWord.page.size' }));
+  assert.strictEqual(a.posted.filter(m => m.type === 'zoomChanged').length, 1, '无关变更不广播');
+  // 面板销毁后不再接收（webview 集合移除）
 });
 
 Promise.all(pending).then(() => {

@@ -366,7 +366,7 @@
 <!-- ================= 2 需求梳理 ================= -->
 <section id="s2">
   <h2 class="sec"><span class="sec-no">2</span>需求梳理与优先级</h2>
-  <p class="sec-lead">用户原始诉求 → 完善后的完整需求。共归纳为 16 个功能模块，按 P0（MVP 必须）/ P1（v1.0）/ P2（后续版本）分级。v1.7 变更：新增 <b>F16 页面设置与外观</b>（纸张尺寸：适应屏幕 / 常见纸张，内容跟随重排；页面背景色与条纹）。v1.6：M1 开发交付（v1.0.0 vsix）。v1.5：性能专项。v1.4：需求跟踪总表。历史：v1.3 图标化 / i18n / Draw.io / Emoji MRU；v1.2 Ribbon 两行 / 中英文字体 / 等宽代码 / PL/SQL；v1.1 Confluence 菜单 / AI 助手 / PDF / 图片持久化。</p>
+  <p class="sec-lead">用户原始诉求 → 完善后的完整需求。共归纳为 17 个功能模块，按 P0（MVP 必须）/ P1（v1.0）/ P2（后续版本）分级。v1.8.2 变更：新增 <b>F17 缩放全局记忆</b>（GitHub issue #2：缩放按全局用户级持久化，跨文档 / 重启保持，已打开文档实时广播同步，三模式统一生效）。v1.7 变更：新增 <b>F16 页面设置与外观</b>（纸张尺寸：适应屏幕 / 常见纸张，内容跟随重排；页面背景色与条纹）。v1.6：M1 开发交付（v1.0.0 vsix）。v1.5：性能专项。v1.4：需求跟踪总表。历史：v1.3 图标化 / i18n / Draw.io / Emoji MRU；v1.2 Ribbon 两行 / 中英文字体 / 等宽代码 / PL/SQL；v1.1 Confluence 菜单 / AI 助手 / PDF / 图片持久化。</p>
 
   <div class="card">
     <h3 class="sub" style="margin-top:0">2.1 原始诉求 → 完善后的需求</h3>
@@ -395,6 +395,7 @@
       <tr><td><span class="badge b-new">新增</span> 性能：使用流畅优先，其次控制内存占用</td><td>流畅度（第一优先，量化验收）：键入上屏 &lt;16ms / 滚动 60fps / 菜单打开 &lt;100ms / 首屏 &lt;300ms；内存（第二优先）：空文档 &lt;150MB、典型文档 &lt;300MB、8 小时长编辑无泄漏；手段：虚拟滚动、懒渲染、重型依赖按需加载、LRU 缓存、关闭即销毁</td><td>7 · 8 · 10</td></tr>
       <tr><td><span class="badge b-new">新增</span> 页面视图尺寸可调（Word 页面设置）</td><td>默认<b>适应屏幕宽度</b>（窗口缩放自动跟随）；可选常见纸张：A3 / A4 / A5 / B5 / Letter / Legal / 自定义宽度（96dpi 换算，如 A4=794px）；切换后内容<b>流式重排</b>（换行 / 表格收缩 / 图片等比缩放 / 代码块横向滚动）；与导出 PDF 联动（默认采用当前页面尺寸）；设置按工作区持久化、<b>不写入文档</b></td><td>F16 · UI-09</td></tr>
       <tr><td><span class="badge b-new">新增</span> 页面背景色与条纹</td><td>纸张背景色：跟随主题（默认）/ 白 / 护眼绿 / 羊皮纸 / 冰蓝 / 自定义取色；条纹：无 / 横线（信纸，对齐行高）/ 方格 / 点阵，与背景色叠加渲染；仅影响屏显与可选导出，不污染 Markdown 源码</td><td>F16 · UI-09</td></tr>
+      <tr><td><span class="badge b-new">新增</span> 缩放比例全局记忆（GitHub issue #2，用户 Suertida：2K 屏每份文件都要重设）</td><td>视图缩放（75%–200%）按<b>全局用户级</b>持久化（跨文档、跨项目、重启保持）；调整后经宿主广播<b>实时同步所有已打开文档</b>；作用于所见即所得 / 源码 / 分屏三模式；开始页签「字号」与视图页签百分比下拉均可点开档位快选（75 / 90 / 100 / 110 / 125 / 150 / 175 / 200）</td><td>F17</td></tr>
       <tr><td><span class="badge b-new">补充</span> 支持所有常见 Markdown 功能</td><td>标题 H1–H6、粗斜删、行内代码、<b>高亮</b>、上下标、引用、代码块（语言选择+高亮）、数学公式（KaTeX）、Mermaid 图表、脚注、目录 TOC、分割线、链接、HTML 直写、Emoji</td><td>F02 · F03 · F09 · F10</td></tr>
       <tr><td><span class="badge b-new">补充</span> —（主动新增）</td><td>智能粘贴：从 Word / Excel / 网页复制内容自动转换为 Markdown（保留标题、粗斜、表格）；查找替换；导出 HTML / PDF / Word；字数统计；命令面板与自定义快捷键</td><td>F11 · F12 · F13 · F14</td></tr>
     </table>
@@ -420,6 +421,7 @@
       <tr><td>F14</td><td><b>VS Code 集成与设置</b></td><td><span class="badge b-p0">P0 · MVP</span></td><td>命令面板、大纲视图、面包屑、设置项、主题跟随、状态栏、界面中英文（i18n）</td></tr>
       <tr><td>F15</td><td><b>AI 助手（GitHub Copilot）</b></td><td><span class="badge b-p1">P1 · v1.0</span></td><td>斜杠 AI 写作（大纲/模板/续写/总结）、选区 AI 改写润色、差异预览、模型切换</td></tr>
       <tr><td>F16</td><td><b>页面设置与外观</b></td><td><span class="badge b-p1">P1 · v1.7</span></td><td>纸张尺寸（适应屏幕 / A3–Legal / 自定义）内容流式重排；页面背景色与条纹（护眼 / 羊皮纸 / 横线 / 方格）</td></tr>
+      <tr><td>F17</td><td><b>缩放全局记忆</b></td><td><span class="badge b-p1">P1 · v1.8</span></td><td>视图缩放全局用户级持久化（跨文档 / 重启），三模式统一生效，已打开文档实时广播同步</td></tr>
     </table>
     <p class="fig-note">注：P2（远期）条目在各模块详述中以 <span class="badge b-p2">P2</span> 标注，如 PicGo 图床上传、docx 导出、自定义 CSS 主题、斜杠菜单自定义项、AI 指令库与 AI 图表生成等。</p>
   </div>
@@ -634,6 +636,19 @@
       <li><b>与缩放的关系</b> — 页面尺寸改变<b>纸张宽度</b>（重排），视图缩放（A⁻/A⁺）改变<b>显示比例</b>（不重排），两者独立叠加，与 Word 行为一致。</li>
     </ul>
     <div class="accept"><b>验收：</b>A4 ↔ 适应屏幕 ↔ A5 来回切换，段落换行与表格收缩正确、无内容丢失；设置后关闭重开保持；导出的 .md 源码 diff 为空（零污染）；护眼绿 + 横线组合下行高与条纹对齐不错位。</div>
+  </div>
+
+  <div class="card feat">
+    <div class="feat-h"><span class="fno">F17</span><h3>缩放全局记忆（GitHub issue #2）</h3><span class="badge b-p1">P1 · v1.8</span></div>
+    <p>用户 Suertida（2K 屏）报告：文件 A 设好的缩放切到文件 B 不生效要重设，重启 VS Code 后<b>所有文件</b>的缩放归零重来。根因：缩放是每个 webview 的局部变量，从未持久化。本模块将缩放升级为<b>全局用户级记忆</b>，与 VS Code 自身 <code>window.zoomLevel</code> 同级——缩放本质是显示器属性（2K / 4K 屏需要更大显示比例），应一处设置、处处生效。</p>
+    <ul class="dots">
+      <li><b>持久化级别（用户决策）</b> — <b>全局用户级</b>（用户 settings.json），跨文档、跨项目、跨窗口、重启全部保持；与 F16 页面设置的工作区级刻意区分（页面外观随项目、缩放随机器）。</li>
+      <li><b>作用范围（用户决策）</b> — 三模式统一：所见即所得（15px 基准）/ 源码 textarea（14px 等宽）/ 分屏预览（15px）等比缩放；此前源码 / 分屏模式下缩放按钮静默无反应，一并修复。</li>
+      <li><b>实时同步（用户决策）</b> — 任一文档调整缩放 → 宿主 <code>onDidChangeConfiguration</code> 统一广播 <code>zoomChanged</code> 到<b>所有已打开文档</b>（含手改 settings.json 的场景）；广播只应用不回写，杜绝保存循环。range 75%–200%，A⁻/A⁺ 步进 10%。</li>
+      <li><b>档位快选</b> — 开始页签「字号」下拉（此前为悬空 UI，从未绑定事件）与视图页签百分比显示均可点开档位面板：75 / 90 / 100 / 110 / 125 / 150 / 175 / 200，当前档高亮；「字号」标签随缩放显示有效字号（如 150% → 22.5）。</li>
+      <li><b>设置项</b> — <code>markdownWord.view.zoom</code>（number，75–200，默认 100）；与页面尺寸相互独立（页面尺寸改纸张宽度并重排，缩放只改显示比例不重排，两者叠加，同 Word）。</li>
+    </ul>
+    <div class="accept"><b>验收：</b>文档 A 调至 150% → 切到已打开的文档 B 立即 150%（无需重开）；重启 VS Code 打开任意文档仍 150%；源码 / 分屏模式同样生效；手改 settings.json 中 view.zoom 后所有打开文档即时跟随；缩放变化不写入 .md 源码（diff 为空）。</div>
   </div>
 </section>
 
@@ -1381,6 +1396,7 @@
         <tr><td><code>page.customWidth</code></td><td><code>794</code></td><td>自定义纸张宽度（px，400–1600，仅 page.size=custom 时生效）</td></tr>
         <tr><td><code>page.background</code></td><td><code>auto</code></td><td>页面背景色：auto（跟随主题）/ white / green（护眼 #C7EDCC）/ parchment / iceblue / 自定义十六进制色</td></tr>
         <tr><td><code>page.pattern</code></td><td><code>none</code></td><td>页面条纹：none / lines（横线信纸）/ grid（方格）/ dots（点阵）；间距对齐行高</td></tr>
+        <tr><td><code>view.zoom</code></td><td><code>100</code></td><td>编辑区缩放百分比（75–200）：三模式统一生效；<b>全局用户级</b>记忆（跨文档 / 跨项目 / 重启保持），调整后实时同步所有已打开文档（F17 · issue #2）</td></tr>
         <tr><td><code>editor.codeFontFamily</code></td><td><code>Consolas</code></td><td>代码块 / 行内代码等宽字体（带回退链，不继承正文字体）</td></tr>
         <tr><td><code>ui.language</code></td><td><code>auto</code></td><td>界面语言：auto（跟随 VS Code 显示语言）/ zh-CN / en，切换即时生效</td></tr>
         <tr><td><code>diagrams.folder</code></td><td><code>./diagrams</code></td><td>Draw.io 源文件（.drawio.svg）保存目录，持久化并随文档搬移</td></tr>
@@ -1518,6 +1534,7 @@
       <tr><td>F14+</td><td>界面中英文 i18n：跟随 VS Code 显示语言，即时切换（v1.3）</td><td><span class="badge b-p1">P1 · v1.3</span></td><td><a href="#f14">3 · F14</a></td><td><span class="st st-dev">已开发待验收</span>v1.5.0：ui.language 设置 + 状态栏/ Ribbon 一键切换，核心字符串双语（2026-08-23）</td></tr>
       <tr><td>F15</td><td>AI 助手（Copilot）：斜杠 AI 大纲 / 模板 / 续写 + 选区改写润色 + 差异预览（v1.1）</td><td><span class="badge b-p1">P1 · v1.1</span></td><td><a href="#f15">3 · F15</a> / <a href="#ui-07">UI-07</a></td><td><span class="st st-dev">已开发待验收</span>v1.5.0：vscode.lm 通道（engines ^1.95）、选区 AI 六动作+自定义指令+结果卡、斜杠 AI大纲/续写、未登录降级（2026-08-23）</td></tr>
       <tr><td>F16</td><td>页面设置与外观：纸张尺寸（适应屏幕 / A3–Legal / 自定义）内容流式重排；背景色与条纹（护眼绿 / 羊皮纸 / 横线 / 方格 / 点阵）（v1.7）</td><td><span class="badge b-p1">P1 · v1.7</span></td><td><a href="#f16">3 · F16</a> / <a href="#ui-09">UI-09</a></td><td><span class="st st-dev">已开发待验收</span>v1.1.0：全部预设 + 自定义 + 暗色变体 + 快选面板/状态栏入口，工作区持久化（2026-08-22）</td></tr>
+      <tr><td>F17</td><td>缩放全局记忆：视图缩放（75–200%）全局用户级持久化，跨文档 / 跨项目 / 重启保持，已打开文档实时广播同步，三模式统一生效，档位快选面板（issue #2）（v1.8.2）</td><td><span class="badge b-p1">P1 · v1.8</span></td><td><a href="#f17">3 · F17</a></td><td><span class="st st-done">已完成</span>v1.8.2：view.zoom 用户级配置 + zoomChanged 广播 + 源码/分屏模式接入 + 字号下拉档位面板（原悬空 UI 修复），218 项测试；<b>真机验证通过（2026-10-19）</b>：A 调 120%→已打开 B 实时跟随 / 档位面板 150%→A 反向跟随 / 手改 settings.json→即时广播 / 重启→75% 记忆恢复 / 源码+分屏模式缩放正常 / .md 零污染</td></tr>
       <tr><td>UI-04</td><td>选区浮动工具栏（含 ✨ AI 按钮）与上下文右键菜单</td><td><span class="badge b-p1">P1</span></td><td><a href="#ui-04">4 · UI-04</a></td><td><span class="st st-part">部分完成</span>v1.4.0：选区格式条 ✓ + <b>右键菜单</b>（复制为 Markdown/表格快捷/查找替换）✓；AI 按钮待 F15（2026-08-23）</td></tr>
       <tr><td>—</td><td>大纲视图 / 面包屑 / 状态栏字数与 Copilot 指示</td><td><span class="badge b-p1">P1</span></td><td><a href="#f14">3 · F14</a></td><td><span class="st st-dev">已开发待验收</span>v1.5.0：大纲树 ✓ + 面包屑（标题栈算法）✓ + 状态栏字数 ✓；Copilot 状态指示随 AI 卡降级提示覆盖（2026-08-23）</td></tr>
       <tr><td colspan="5" style="background:#f8fafc;font-weight:700;color:#475569">P2 · 远期</td></tr>
@@ -1530,7 +1547,7 @@
 </main>
 
 <footer>
-  Markdown Word · 需求与 UI 设计文档 v1.8 评审稿 · 2026-08-22 · v1.8 变更：F16 页面设置与外观实施交付（v1.1.0 vsix，48 项测试通过）· 历史变更见第 2 节 · 本文档可直接在浏览器中打开评审
+  Markdown Word · 需求与 UI 设计文档 v1.8.2 评审稿 · 2026-10-19 · v1.8.2 变更：新增 F17 缩放全局记忆（issue #2，218 项测试）· v1.8 变更：F16 页面设置与外观实施交付（v1.1.0 vsix，48 项测试通过）· 历史变更见第 2 节 · 本文档可直接在浏览器中打开评审
 </footer>
 
 <script>
