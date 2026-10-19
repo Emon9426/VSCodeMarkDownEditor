@@ -10,9 +10,9 @@
 Copilot AI 助手、公式 / 流程图 / 代码高亮、页面设置、中英双语界面。
 
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.95-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
-[![Tests](https://img.shields.io/badge/tests-218%20passed-brightgreen)](#开发与测试)
+[![Tests](https://img.shields.io/badge/tests-230%20passed-brightgreen)](#开发与测试)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#许可证)
-[![Version](https://img.shields.io/badge/version-1.8.2-8A2BE2)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.9.0-8A2BE2)](CHANGELOG.md)
 
 **磁盘上永远是标准 Markdown** —— 可视化编辑零语法妥协，往返保真。
 
@@ -101,6 +101,13 @@ code VSCodeMarkDownEditor   # 打开后按 F5 启动扩展开发主机
 
 页签行（开始 / 插入 / 表格 / 表格工具 / 视图）+ 单行工具组，恒定两行不折行，
 全部图标化并带中文 tooltip 与快捷键提示。
+
+**中英文字体分设 + 本机字体全量列表**（[issue #1](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/1)）：
+「Aa 西文 ▾」「汉 中 ▾」下拉与状态栏 🅰 列出**本机已安装的全部字体**（按名称排序、
+顶部搜索框实时过滤、每项以其自身字体预览、当前值高亮），选中即时生效并按工作区持久化；
+西文管拉丁字符与数字、中文管 CJK 字符，组合回退链自动各用其字体；
+状态栏 🅰 点击直达双入口，选区存在时可「应用于选中文字」（随文档保存）；
+H▾ 弹出标题 4–6 菜单、📋 弹出剪切/复制/粘贴菜单——工具栏无悬空按钮。
 
 ![插入页签](docs/images/ribbon-insert.png)
 
@@ -416,6 +423,14 @@ right-click the file tab → **Reopen Editor With...** → choose *Markdown Word
 
 **WYSIWYG / Source / Split** — switch anytime (status bar cycles modes, or the Ribbon *View* tab).
 Source and split modes use exactly the same paper width as page mode, so switching never jumps.
+
+**Latin/CJK font split + full system font list** ([issue #1](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/1)):
+the *Aa Latin* / *汉 CJK* dropdowns and the status-bar 🅰 list **every font installed on your machine**
+(sorted by name, live search box, each entry previewed in its own font, current value highlighted);
+picking one applies instantly and persists per workspace. Latin covers digits and Latin letters,
+CJK covers Chinese characters — a combined fallback chain picks the right one automatically.
+The status-bar 🅰 opens both entries; with a selection you can "apply to selection" (saved with the document).
+H▾ opens the heading 4–6 menu, 📋 the cut/copy/paste menu — no dead buttons.
 
 | Mode | Description |
 |---|---|

@@ -389,11 +389,15 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.8.2</span>'
+      '<span class="seg">Markdown Word v1.9.0</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
     $('#sbWords').onclick = () => toast('全文字数：' + $('#sbWords').textContent);
+    $('#sbFont').onclick = e => showCmdMenu(e.target, [
+      { icon: 'Aa', label: '西文字体（拉丁字符与数字）…', fn: () => showFontPanel($('#sbFont'), 'latin') },
+      { icon: '汉', label: '中文字体（CJK 字符）…', fn: () => showFontPanel($('#sbFont'), 'cjk') }
+    ]);
     $('#sbPage').onclick = e => showPagePanel(e.target);
     $('#sbLang').onclick = () => cycleLanguage();
 
@@ -1589,11 +1593,10 @@
     bar.style.top = Math.max(8, rect.top - 38) + 'px';
   }
 
-  // ================= F02 字体中英分设（文档级：CSS 变量 + 设置持久化，零源码污染） =================
-  const FONT_LISTS = {
-    latin: [['', '跟随 VS Code'], ['Segoe UI', 'Segoe UI'], ['Arial', 'Arial'], ['Georgia', 'Georgia'], ['Times New Roman', 'Times New Roman'], ['Cascadia Code', 'Cascadia Code'], ['Consolas', 'Consolas'], ['Verdana', 'Verdana'], ['Tahoma', 'Tahoma']],
-    cjk: [['', '跟随 VS Code'], ['Microsoft YaHei', '微软雅黑'], ['SimSun', '宋体'], ['KaiTi', '楷体'], ['SimHei', '黑体'], ['FangSong', '仿宋'], ['Source Han Sans SC', '思源黑体'], ['LXGW WenKai', '霞鹜文楷']]
-  };
+  // ================= F02/F18 字体中英分设（系统字体全量列表，issue #1） =================
+  // 字体列表来自宿主扫描本机已安装字族（listFonts 消息 → fonts 回填），按名称排序、支持搜索。
+  let sysFonts = null; // null = 未请求；[] = 已回填
+  let fontPanelKey = 'fontFamilyLatin';
   function applyFontVars() {
     const e = settings.editor || {};
     const latin = e.fontFamilyLatin || '';
@@ -1612,11 +1615,42 @@
     vscode.postMessage({ type: 'saveSetting', section: 'editor', key: key, value: value });
     hideFontPanel();
   }
+  // 渲染字体列表（跟随 VS Code + 系统字体全量；按搜索词过滤；当前值高亮并滚动到可见）
+  function renderFontList() {
+    const list = $('#fontList'); if (!list) { return; }
+    const cur = (settings.editor || {})[fontPanelKey] || '';
+    const q = (($('#fontSearch') || {}).value || '').toLowerCase();
+    const search = $('#fontSearch');
+    if (search) { search.placeholder = sysFonts === null ? '正在读取系统字体…' : '搜索字体（本机 ' + sysFonts.length + ' 个）'; }
+    list.innerHTML = '';
+    const mk = function (val, label) {
+      const item = document.createElement('div');
+      item.className = 'fitem' + (val === cur ? ' on' : '');
+      item.textContent = (val === cur ? '✓ ' : '') + label;
+      if (val) { item.style.fontFamily = '"' + val + '", sans-serif'; }
+      item.onclick = () => setFont(fontPanelKey, val);
+      list.appendChild(item);
+    };
+    if (!q || '跟随 vscode'.indexOf(q) !== -1) { mk('', '跟随 VS Code'); }
+    if (sysFonts === null) {
+      const d = document.createElement('div'); d.className = 'fitem fload'; d.textContent = '正在读取系统字体…';
+      list.appendChild(d);
+      return;
+    }
+    let n = 0;
+    sysFonts.forEach(function (f) {
+      if (!q || f.toLowerCase().indexOf(q) !== -1) { mk(f, f); n++; }
+    });
+    if (q && !n) {
+      const d = document.createElement('div'); d.className = 'fitem fload'; d.textContent = '（无匹配字体）';
+      list.appendChild(d);
+    }
+    const on = list.querySelector('.fitem.on');
+    if (on && on.scrollIntoView) { try { on.scrollIntoView({ block: 'center' }); } catch (_e) { /* ignore */ } }
+  }
   function showFontPanel(anchor, kind) {
-    hideFontPanel();
-    const list = kind === 'cjk' ? FONT_LISTS.cjk : FONT_LISTS.latin;
-    const key = kind === 'cjk' ? 'fontFamilyCJK' : 'fontFamilyLatin';
-    const cur = (settings.editor || {})[key] || '';
+    hideFontPanel(); hideZoomPanel(); hideCmdMenu();
+    fontPanelKey = kind === 'cjk' ? 'fontFamilyCJK' : 'fontFamilyLatin';
     const panel = document.createElement('div'); panel.id = 'fontPanel';
     // 有选区时提供"应用于选中文字"（行内 span 持久化，随文档保存）
     const sel = window.getSelection();
@@ -1624,25 +1658,24 @@
       const applyBtn = document.createElement('div');
       applyBtn.className = 'fitem apply-sel';
       applyBtn.textContent = lang === 'zh' ? '✎ 应用于选中文字（随文档保存）' : '✎ Apply to selection (persisted)';
-      applyBtn.style.borderTop = '1px solid rgba(127,127,127,.2)';
       applyBtn.onclick = () => { applyFontToSelection(); hideFontPanel(); };
       panel.appendChild(applyBtn);
-      const sep = document.createElement('div'); sep.className = 'fsep2'; sep.style.cssText = 'height:1px;background:rgba(127,127,127,.2);margin:4px 0';
-      panel.appendChild(sep);
     }
-    list.forEach(function (kv) {
-      const item = document.createElement('div');
-      item.className = 'fitem' + (kv[0] === cur ? ' on' : '');
-      item.textContent = (kv[0] === cur ? '✓ ' : '') + kv[1];
-      if (kv[0]) { item.style.fontFamily = '"' + kv[0] + '"' + (kind === 'latin' ? '' : ', sans-serif'); }
-      item.onclick = () => setFont(key, kv[0]);
-      panel.appendChild(item);
-    });
+    const search = document.createElement('input');
+    search.id = 'fontSearch'; search.type = 'text'; search.autocomplete = 'off';
+    search.placeholder = sysFonts === null ? '正在读取系统字体…' : '搜索字体（本机 ' + sysFonts.length + ' 个）';
+    search.oninput = renderFontList;
+    panel.appendChild(search);
+    const list = document.createElement('div'); list.id = 'fontList';
+    panel.appendChild(list);
     $('#app').appendChild(panel);
     const r = anchor.getBoundingClientRect();
     panel.style.display = 'block'; panel.style.position = 'fixed';
-    panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 230)) + 'px';
-    panel.style.top = (r.bottom + 6) + 'px';
+    panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 280)) + 'px';
+    // 靠近视口底部时向上展开（状态栏入口）
+    panel.style.top = (r.bottom + 6 + 340 > window.innerHeight ? Math.max(8, r.top - 346) : r.bottom + 6) + 'px';
+    renderFontList();
+    if (sysFonts === null) { vscode.postMessage({ type: 'listFonts' }); } // 首次打开请求宿主扫描（此后缓存）
   }
   function hideFontPanel() { const p = $('#fontPanel'); if (p) { p.remove(); } }
   function bindFontDdls() {
@@ -1653,6 +1686,46 @@
       ddls[1].style.cursor = 'pointer'; ddls[1].onclick = e => showFontPanel(e.target, 'cjk');
       ddls[2].style.cursor = 'pointer'; ddls[2].onclick = e => showZoomPanel(e.target);
     }
+  }
+
+  // ================= F18 通用命令菜单（H▾ 标题 / 📋 剪贴板 / 状态栏字体入口） =================
+  function showCmdMenu(anchor, items) {
+    hideCmdMenu(); hideFontPanel(); hideZoomPanel();
+    const menu = document.createElement('div'); menu.id = 'cmdMenu';
+    items.forEach(function (it) {
+      const d = document.createElement('div');
+      d.className = 'fitem';
+      const ic = document.createElement('span'); ic.className = 'cm-ic'; ic.textContent = it.icon;
+      d.appendChild(ic);
+      const tx = document.createElement('span'); tx.textContent = it.label;
+      d.appendChild(tx);
+      d.onclick = () => { hideCmdMenu(); it.fn(); };
+      menu.appendChild(d);
+    });
+    $('#app').appendChild(menu);
+    const r = anchor.getBoundingClientRect();
+    menu.style.display = 'block'; menu.style.position = 'fixed';
+    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 240)) + 'px';
+    menu.style.top = (r.bottom + 6 + items.length * 32 + 16 > window.innerHeight ? Math.max(8, r.top - items.length * 32 - 22) : r.bottom + 6) + 'px';
+  }
+  function hideCmdMenu() { const m = $('#cmdMenu'); if (m) { m.remove(); } }
+  // 剪贴板三件套（execCommand 需用户手势内触发；readText 受浏览器权限限制，失败降级提示）
+  function execClipboard(cmd) {
+    if (mode !== 'wysiwyg') { toast('请在所见即所得模式选中内容后操作'); return; }
+    if (document.execCommand) {
+      const ok = document.execCommand(cmd);
+      toast(ok ? (cmd === 'cut' ? '已剪切，可 Ctrl+V 粘贴' : '已复制，可 Ctrl+V 粘贴') : '未选中内容');
+    } else { toast('当前环境不支持，请使用 Ctrl+X / Ctrl+C'); }
+  }
+  function tryPasteClipboard() {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function (txt) {
+        if (!txt) { toast('剪贴板为空'); return; }
+        if (mode !== 'wysiwyg') { insertAtTextarea(srcTextarea, txt); }
+        else { insertAtCaret(document.createTextNode(txt)); }
+        toast('已从剪贴板粘贴');
+      }).catch(function () { toast('浏览器安全策略限制读取剪贴板，请直接使用 Ctrl+V'); });
+    } else { toast('请直接使用 Ctrl+V 粘贴'); }
   }
 
   // ================= F10 脚注插入 =================
@@ -2092,8 +2165,25 @@
       case 'highlight': toggleWrap('mark'); break;
       case 'incode': toggleWrap('code'); break;
       case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': setBlockType(cmd); break;
+      case 'hmore':
+        // F18 修复：H▾ 此前无任何处理（点击无响应）——弹出标题 4–6 / 正文菜单
+        showCmdMenu($('.rbtn[data-cmd="hmore"]') || editorWrap, [
+          { icon: 'H4', label: '标题 4 · Ctrl+4', fn: () => setBlockType('h4') },
+          { icon: 'H5', label: '标题 5 · Ctrl+5', fn: () => setBlockType('h5') },
+          { icon: 'H6', label: '标题 6 · Ctrl+6', fn: () => setBlockType('h6') },
+          { icon: '¶', label: '正文', fn: () => setBlockType('p') }
+        ]);
+        break;
       case 'p': setBlockType('p'); break;
       case 'quote': setBlockType('quote'); break;
+      case 'indent': case 'outdent': {
+        // 全量复查修复：缩进按钮原无 case（仅 Tab/Shift+Tab 键盘路径可达）
+        if (!requireWysiwyg(cmd === 'indent' ? '增加缩进' : '减少缩进')) { break; }
+        const li = closestTag('li');
+        if (!li) { toast('缩进作用于列表项：请将光标置于列表中（Tab / Shift+Tab 等效）'); break; }
+        if (cmd === 'indent') { indentListItem(li); } else { outdentListItem(li); }
+        break;
+      }
       case 'hr': insertHR(); break;
       case 'ul': case 'ol': case 'task': {
         const b = topBlock();
@@ -2157,7 +2247,14 @@
       case 'undo': execSimple('undo'); break;
       case 'redo': execSimple('redo'); break;
       case 'toggleMode': setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg'); break;
-      case 'paste': toast('请直接使用 Ctrl+V 粘贴（浏览器安全策略不允许程序化粘贴）'); break;
+      case 'paste':
+        // F18 修复：此前仅弹提示——按 tooltip 承诺实现 ▾ 子菜单（剪切 / 复制 / 粘贴）
+        showCmdMenu($('.rbtn[data-cmd="paste"]') || editorWrap, [
+          { icon: '✂', label: '剪切（选中内容）· Ctrl+X', fn: () => execClipboard('cut') },
+          { icon: '⧉', label: '复制（选中内容）· Ctrl+C', fn: () => execClipboard('copy') },
+          { icon: '📥', label: '粘贴（读取剪贴板）· Ctrl+V', fn: () => tryPasteClipboard() }
+        ]);
+        break;
       default:
         if (['rowAbove', 'rowBelow', 'delRow', 'colLeft', 'colRight', 'delCol',
           'alLeft', 'alCenter', 'alRight', 'toggleHead', 'delTable',
@@ -2189,7 +2286,7 @@
   }
   function zoomFont(d) { setZoom(zoom + d * 10); }
   function showZoomPanel(anchor) {
-    hideZoomPanel();
+    hideZoomPanel(); hideFontPanel(); hideCmdMenu();
     const panel = document.createElement('div'); panel.id = 'zoomPanel';
     ZOOM_LEVELS.forEach(function (lv) {
       const item = document.createElement('div');
@@ -2383,6 +2480,7 @@
       return scheduleSave();
     }
     outerLi.after(li);
+    if (!sub.children.length) { sub.remove(); } // 嵌套项全部移出后清理空子列表，避免序列化残留
     scheduleSave();
   }
 
@@ -2879,6 +2977,10 @@
         break;
       }
       case 'imageMap': applyImageMap(msg.map || {}); break;
+      case 'fonts':
+        sysFonts = (msg.fonts || []).slice(); // 宿主已按名称排序；回填后若面板开着即时渲染
+        if ($('#fontPanel')) { renderFontList(); }
+        break;
       case 'zoomChanged': applyZoom(msg.zoom); break; // 其他文档调整缩放 → 本文档实时跟随（只应用不回写，防循环）
       case 'gotoHeading': gotoHeading(msg.text); break;
       case 'aiChunk':
