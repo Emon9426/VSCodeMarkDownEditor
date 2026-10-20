@@ -201,6 +201,7 @@
     pagePanel.appendChild(note);
   }
   function showPagePanel(anchor) {
+    hideCmdMenu(); hideFontPanel(); hideZoomPanel(); // 弹层互斥（issue #6 复查：此前可叠放）
     buildPagePanel();
     pagePanel.style.display = 'block';
     const r = (anchor && anchor.getBoundingClientRect) ? anchor.getBoundingClientRect() : { left: window.innerWidth - 320, bottom: 60 };
@@ -389,7 +390,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.9.1</span>'
+      '<span class="seg">Markdown Word v1.9.2</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -473,6 +474,10 @@
       if (tablePicker.style.display === 'block' && !tablePicker.contains(e.target)) { hideTablePicker(); }
       if (emojiPanel.style.display === 'block' && !emojiPanel.contains(e.target)) { emojiPanel.style.display = 'none'; }
       if (pagePanel && pagePanel.style.display === 'block' && !pagePanel.contains(e.target)) { hidePagePanel(); }
+      // 动态创建的面板同样点外关闭（issue #6 复查：此前只关 tablePicker/emoji/page 三种）
+      const cm = $('#cmdMenu'); if (cm && !cm.contains(e.target)) { hideCmdMenu(); }
+      const fp = $('#fontPanel'); if (fp && !fp.contains(e.target)) { hideFontPanel(); }
+      const zp = $('#zoomPanel'); if (zp && !zp.contains(e.target)) { hideZoomPanel(); }
     });
   }
   function showTablePicker(btn) {
@@ -480,7 +485,8 @@
     tablePicker.style.display = 'block';
     tablePicker.style.position = 'fixed';
     tablePicker.style.left = Math.min(r.left, window.innerWidth - 260) + 'px';
-    tablePicker.style.top = (r.bottom + 6) + 'px';
+    // 底部钳制：宿主命令入口以 editorWrap 为锚（bottom≈视口底），不钳制则面板 90% 落到视口外
+    tablePicker.style.top = Math.max(8, Math.min(r.bottom + 6, (window.innerHeight || 800) - 235)) + 'px';
   }
   function hideTablePicker() { tablePicker.style.display = 'none'; }
 
@@ -786,7 +792,10 @@
       if (t === 'ul' || t === 'ol') { listToParas(b); }
       return;
     }
-    if (t === tag) { return setBlockType('p'); }
+    if (t === tag) {
+      if (tag === 'p') { return; } // 已是正文 → 幂等返回（原实现对 'p' 自递归 → 栈溢出）
+      return setBlockType('p'); // 同类标题再点 → 转回正文（开关语义）
+    }
     const el = document.createElement(tag === 'quote' ? 'blockquote' : tag);
     el.innerHTML = b.innerHTML;
     b.replaceWith(el);
@@ -953,7 +962,7 @@
       thead.appendChild(tr); table.appendChild(thead);
     }
     const tbody = document.createElement('tbody');
-    const bodyRows = withHeader ? rows : rows; // rows 含表头
+    const bodyRows = withHeader ? Math.max(0, rows - 1) : rows; // rows 为总行数（含表头）——修复死三元：此前恒为 rows，比网格标签多一行
     for (let r = 0; r < bodyRows; r++) {
       const tr = document.createElement('tr');
       for (let c = 0; c < cols; c++) { tr.appendChild(mk('td')); }
@@ -1649,7 +1658,7 @@
     if (on && on.scrollIntoView) { try { on.scrollIntoView({ block: 'center' }); } catch (_e) { /* ignore */ } }
   }
   function showFontPanel(anchor, kind) {
-    hideFontPanel(); hideZoomPanel(); hideCmdMenu();
+    hideFontPanel(); hideZoomPanel(); hideCmdMenu(); hidePagePanel();
     fontPanelKey = kind === 'cjk' ? 'fontFamilyCJK' : 'fontFamilyLatin';
     const panel = document.createElement('div'); panel.id = 'fontPanel';
     // 有选区时提供"应用于选中文字"（行内 span 持久化，随文档保存）
@@ -1689,9 +1698,19 @@
   }
 
   // ================= F18 通用命令菜单（H▾ 标题 / 📋 剪贴板 / 状态栏字体入口） =================
+  // 锚点加固（issue #6 复查）：目标按钮所在页签未激活时 display:none → rect 全 0，弹层会落到视口左上角；
+  // 此时退而锚到常驻可见的 Ribbon（宿主命令 / 快捷键入口都可能命中此场景）。
+  function anchorVisible(selector) {
+    const el = $(selector);
+    if (el) {
+      try { const r = el.getBoundingClientRect(); if (r && (r.width || r.height)) { return el; } } catch (e) { /* ignore */ }
+    }
+    return $('#ribbon') || editorWrap;
+  }
   function showCmdMenu(anchor, items) {
-    hideCmdMenu(); hideFontPanel(); hideZoomPanel();
+    hideCmdMenu(); hideFontPanel(); hideZoomPanel(); hidePagePanel();
     const menu = document.createElement('div'); menu.id = 'cmdMenu';
+    menu.addEventListener('mousedown', e => e.preventDefault()); // 与 #aiMenu 一致：防点击菜单项夺走编辑区选区
     items.forEach(function (it) {
       const d = document.createElement('div');
       d.className = 'fitem';
@@ -1712,6 +1731,9 @@
   // 剪贴板三件套（execCommand 需用户手势内触发；readText 受浏览器权限限制，失败降级提示）
   function execClipboard(cmd) {
     if (mode !== 'wysiwyg') { toast('请在所见即所得模式选中内容后操作'); return; }
+    // 弹层点击会夺走选区（Chromium 行为）：执行前恢复最后有效编辑区选区
+    editor.focus();
+    restoreSelIfNeeded();
     if (document.execCommand) {
       const ok = document.execCommand(cmd);
       toast(ok ? (cmd === 'cut' ? '已剪切，可 Ctrl+V 粘贴' : '已复制，可 Ctrl+V 粘贴') : '未选中内容');
@@ -1756,6 +1778,7 @@
   // ================= UI-04 右键菜单 =================
   function buildCtxMenu() {
     const menu = document.createElement('div'); menu.id = 'ctxMenu';
+    menu.addEventListener('mousedown', e => e.preventDefault()); // 防点击菜单项夺走编辑区选区（剪切/复制依赖）
     $('#app').appendChild(menu);
     editor.addEventListener('contextmenu', e => {
       e.preventDefault();
@@ -1773,8 +1796,8 @@
     const onImg = !!(closestTag && closestTag('img'));
     const items = [];
     if (hasSel) {
-      items.push(['✂', '剪切', () => document.execCommand('cut')]);
-      items.push(['⧉', '复制', () => document.execCommand('copy')]);
+      items.push(['✂', '剪切', () => execClipboard('cut')]);
+      items.push(['⧉', '复制', () => execClipboard('copy')]);
     }
     items.push(['📋', '粘贴（Ctrl+V）', () => toast('请直接按 Ctrl+V 粘贴')]);
     if (hasSel) { items.push(['📄', '复制为 Markdown 源码', copySelectionAsMd]); }
@@ -2026,8 +2049,17 @@
   function aiSelectionAction(cmd) {
     if (!aiAvailable()) { toast(T('aiDisabled')); return; }
     if (cmd === 'custom') {
+      // 指令对话框会夺走选区：先捕获 range/文本，确认后用捕获值发起请求（与其余命令同模式）
+      const sel = window.getSelection();
+      if (!sel.rangeCount || sel.isCollapsed || !editor.contains(sel.anchorNode)) {
+        toast(lang === 'zh' ? '请先选中要处理的文字' : 'Select text first'); return;
+      }
+      const r = sel.getRangeAt(0).cloneRange();
+      const text = sel.toString();
       const v = prompt2(T('aiMenuTitle'), 'instruction');
-      return v.then ? v.then(x => { if (x && x.instruction) { startSelAi('custom', x.instruction); } }) : null;
+      return v.then ? v.then(x => {
+        if (x && x.instruction) { aiRequest('custom', text, x.instruction); aiState.range = r; }
+      }) : null;
     }
     startSelAi(cmd, '');
   }
@@ -2155,8 +2187,16 @@
   }
 
   // ================= 命令分发 =================
+  // 行内/块级格式与选区类命令仅作用于所见即所得编辑区：源码/分屏模式下静默无效（无反馈）
+  // 属体验缺陷（issue #6 复查）——统一给出与块级命令一致的提示
+  const WYSIWYG_ONLY_CMDS = ['bold', 'italic', 'underline', 'strike', 'highlight', 'incode',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hmore', 'p', 'quote', 'ul', 'ol', 'task', 'link', 'emoji'];
   function runCommand(cmd) {
     editor.focus();
+    if (mode !== 'wysiwyg' && WYSIWYG_ONLY_CMDS.indexOf(cmd) !== -1) {
+      requireWysiwyg('设置格式');
+      return;
+    }
     switch (cmd) {
       case 'bold': execSimple('bold'); break;
       case 'italic': execSimple('italic'); break;
@@ -2167,7 +2207,7 @@
       case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': setBlockType(cmd); break;
       case 'hmore':
         // F18 修复：H▾ 此前无任何处理（点击无响应）——弹出标题 4–6 / 正文菜单
-        showCmdMenu($('.rbtn[data-cmd="hmore"]') || editorWrap, [
+        showCmdMenu(anchorVisible('.rbtn[data-cmd="hmore"]'), [
           { icon: 'H4', label: '标题 4 · Ctrl+4', fn: () => setBlockType('h4') },
           { icon: 'H5', label: '标题 5 · Ctrl+5', fn: () => setBlockType('h5') },
           { icon: 'H6', label: '标题 6 · Ctrl+6', fn: () => setBlockType('h6') },
@@ -2215,13 +2255,14 @@
       case 'image': openImageDialog(); break;
       case 'link': openLinkDialog(); break;
       case 'datetime': insertDatetime(); break;
-      case 'emoji': showEmojiPanel($('.rbtn[data-cmd="emoji"]') || editorWrap); break;
+      case 'emoji': showEmojiPanel(anchorVisible('.rbtn[data-cmd="emoji"]')); break;
       case 'mWysiwyg': setMode('wysiwyg'); break;
       case 'mSource': setMode('source'); break;
       case 'mSplit': setMode('split'); break;
       case 'zoomIn': zoomFont(1); break;
       case 'zoomOut': zoomFont(-1); break;
-      case 'pageSetup': showPagePanel($('.rbtn[data-cmd="pageSetup"]') || editorWrap); break;
+      case 'aiMenu': showAiMenu(anchorVisible('.rbtn[data-cmd="aiMenu"]')); break; // 兜底入口（ftBar 自有监听为主路径）
+      case 'pageSetup': showPagePanel(anchorVisible('.rbtn[data-cmd="pageSetup"]')); break;
       case 'cycleLang': cycleLanguage(); break;
       case 'find': openFind(false); break;
       case 'replace': openFind(true); break;
@@ -2256,7 +2297,7 @@
       case 'toggleMode': setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg'); break;
       case 'paste':
         // F18 修复：此前仅弹提示——按 tooltip 承诺实现 ▾ 子菜单（剪切 / 复制 / 粘贴）
-        showCmdMenu($('.rbtn[data-cmd="paste"]') || editorWrap, [
+        showCmdMenu(anchorVisible('.rbtn[data-cmd="paste"]'), [
           { icon: '✂', label: '剪切（选中内容）· Ctrl+X', fn: () => execClipboard('cut') },
           { icon: '⧉', label: '复制（选中内容）· Ctrl+C', fn: () => execClipboard('copy') },
           { icon: '📥', label: '粘贴（读取剪贴板）· Ctrl+V', fn: () => tryPasteClipboard() }
@@ -2293,7 +2334,7 @@
   }
   function zoomFont(d) { setZoom(zoom + d * 10); }
   function showZoomPanel(anchor) {
-    hideZoomPanel(); hideFontPanel(); hideCmdMenu();
+    hideZoomPanel(); hideFontPanel(); hideCmdMenu(); hidePagePanel();
     const panel = document.createElement('div'); panel.id = 'zoomPanel';
     ZOOM_LEVELS.forEach(function (lv) {
       const item = document.createElement('div');
@@ -2586,8 +2627,9 @@
     });
     editorWrap.addEventListener('scroll', () => { if (selImg) { placeImgBoth(); } });
     editor.addEventListener('mousedown', e => {
-      // 图片选择态不需要光标定位：阻止默认（防拖动时选区闪动）
-      if (selImg) { e.preventDefault(); }
+      // 图片选择态不需要光标定位：仅拦图片本体（防拖动时选区闪动）。
+      // 此前 selImg 存在时拦整个编辑区 → 点正文首击不落光标（issue #6 复查）
+      if (selImg && e.target.closest && e.target.closest('img')) { e.preventDefault(); }
     });
     editor.addEventListener('click', e => {
       const img = e.target && e.target.closest ? e.target.closest('img') : null;
@@ -2847,11 +2889,11 @@
 
   // ================= 事件绑定 =================
   function bindEvents() {
-    // Ribbon 命令（#ttBar 内按钮有独立监听，此处跳过避免双执行）
+    // Ribbon 命令（#ttBar / #ftBar 内按钮有独立监听，此处跳过避免双执行——issue #6）
     document.addEventListener('click', e => {
       const btn = e.target.closest('.rbtn');
       if (!btn || !btn.dataset.cmd) { return; }
-      if (btn.closest('#ttBar')) { return; }
+      if (btn.closest('#ttBar') || btn.closest('#ftBar')) { return; }
       const cmd = btn.dataset.cmd;
       if (cmd === 'table') { showTablePicker(btn); return; }
       runCommand(cmd);

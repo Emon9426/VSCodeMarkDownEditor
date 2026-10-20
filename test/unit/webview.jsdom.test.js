@@ -111,12 +111,12 @@ test('网格 hover 高亮与标签（3×2 → “3 × 2 表格”）', () => {
   assert.strictEqual(q('#tpLabel').textContent, '3 × 2 表格');
 });
 
-test('网格 click → 插入表格（表头 3 列 + 数据 2 行）', () => {
-  click(qa('#tpGrid .cell').find(c => +c.dataset.r === 2 && +c.dataset.c === 3));
+test('网格 click → 插入表格（3 列 × 3 行总行 = 表头 1 + 数据 2）', () => {
+  click(qa('#tpGrid .cell').find(c => +c.dataset.r === 3 && +c.dataset.c === 3));
   const table = q('#editor > table');
   assert.ok(table, '表格已进入编辑区');
   assert.strictEqual(table.querySelectorAll('thead th').length, 3);
-  assert.strictEqual(table.querySelectorAll('tbody tr').length, 2);
+  assert.strictEqual(table.querySelectorAll('tbody tr').length, 2, '总行数含表头（原实现恒多一行）');
   assert.strictEqual(table.querySelector('th').textContent, '列1');
 });
 
@@ -1132,6 +1132,126 @@ test('全量按钮穷举：四个页签 + 表格工具条逐一点击，每个�
   selIn(li2);
   click(q('#rp-home .rbtn[data-cmd="outdent"]'));
   assert.ok(qa('#editor ul ul').length + qa('#editor ol ol').length === 0, 'outdent 还原嵌套');
+});
+
+// ================= v1.9.2 选区浮动条回归（issue #6：双执行） =================
+// v1.9.0 引入 document 级 .rbtn 统一 click 分发器后，#ftBar 按钮一次点击被自身监听与
+// document 分发器各执行一次 runCommand：toggle 类命令开→关（视觉无效）、H2 转 P、
+// 链接弹窗被重建。本组固定点浮动条按钮实例，断言「格式结果/执行次数」而非「有调用」
+//（上方穷举用例按 cmd 去重先点 Ribbon 实例，浮动条实例从未被点击——这正是漏网原因）。
+test('issue#6：浮动条 高亮/行内代码/加粗/删除线/H2/链接 单次执行且结果成立', async () => {
+  const execCalls = [];
+  doc.execCommand = cmd => { execCalls.push(cmd); return true; };
+  const ftb = c => qa('#ftBar .rbtn').find(b => b.dataset.cmd === c);
+  // 选区锚定到段内第一个文本节点：jsdom 的 Selection.addRange 会把「容器为元素」的边界
+  // 归一化成折叠态（真实浏览器无此行为），驱动必须落在文本节点上才等价于用户拖选。
+  const resetSel = () => {
+    const p = qa('#editor > p')[0];
+    assert.ok(p, '存在段落');
+    // 深入第一个「非空」文本节点：jsdom 的 surroundContents 会在包裹元素前残留空文本节点
+    //（innerHTML 不可见但会截住 firstChild 游走），空节点上选区为折叠态无法驱动 toggle。
+    let node = p;
+    while (true) {
+      assert.ok(node, '段落含非空文本节点');
+      if (node.nodeType === 3 && node.textContent.trim()) { break; }
+      node = node.nodeType === 3 ? node.nextSibling : node.firstChild;
+    }
+    const r = doc.createRange(); r.selectNodeContents(node);
+    sel().removeAllRanges(); sel().addRange(r);
+    doc.dispatchEvent(new win.Event('selectionchange'));
+  };
+  assert.ok(['bold', 'italic', 'strike', 'incode', 'highlight', 'h2', 'link', 'aiMenu'].every(c => ftb(c)), '浮动条 8 按钮齐全');
+
+  // 高亮：一次生效、再点解除（开关双向）
+  win.__onMessage({ data: { type: 'init', text: '高亮目标句子。\n', settings: {} } });
+  resetSel(); click(ftb('highlight'));
+  assert.ok(q('#editor mark'), '高亮一次点击生效（双执行时被立即解包）');
+  resetSel(); click(ftb('highlight'));
+  assert.ok(!q('#editor mark'), '再次点击解除高亮');
+
+  // 行内代码：一次生效
+  win.__onMessage({ data: { type: 'init', text: '代码目标句子。\n', settings: {} } });
+  resetSel(); click(ftb('incode'));
+  assert.ok(q('#editor code'), '行内代码一次点击生效');
+
+  // execCommand 类（bold/strike）：每条命令恰好执行一次
+  win.__onMessage({ data: { type: 'init', text: '加粗目标句子。\n', settings: {} } });
+  const n0 = execCalls.length;
+  resetSel(); click(ftb('bold'));
+  assert.strictEqual(execCalls.length - n0, 1, 'bold 恰好执行一次（实际 ' + (execCalls.length - n0) + ' 次）');
+  resetSel(); click(ftb('strike'));
+  assert.strictEqual(execCalls.filter(c => c === 'strikeThrough').length, 1, 'strikeThrough 恰好执行一次');
+
+  // H2：一次点击后保持标题（双执行时先变 H2 又被转回正文）
+  win.__onMessage({ data: { type: 'init', text: '标题化目标段。\n', settings: {} } });
+  resetSel(); click(ftb('h2'));
+  assert.ok(q('#editor > h2'), 'H2 一次点击生效且不被转回正文');
+
+  // 链接：弹窗打开且「显示文本」预填当前选中文本
+  win.__onMessage({ data: { type: 'init', text: '链接目标句子。\n', settings: {} } });
+  resetSel(); click(ftb('link'));
+  assert.strictEqual(q('.dlgMask').style.display, 'flex', '链接对话框打开');
+  const textInput = q('.dlg [data-field="text"]');
+  assert.ok(textInput && textInput.value === '链接目标句子。', '显示文本预填选中文本（实际: ' + (textInput && JSON.stringify(textInput.value)) + '）');
+  click(qa('.dlg .foot .btn')[0]); // 取消关闭
+});
+
+// ================= issue #6 全量复查修复（独立审查发现） =================
+test('复查#1：H▾「正文」在段落上幂等（原 setBlockType(\'p\') 无限递归栈溢出）', () => {
+  win.__onMessage({ data: { type: 'init', text: '普通正文段。\n', settings: {} } });
+  caretIn(qa('#editor > p')[0], true);
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-home'));
+  click(q('#rp-home .rbtn[data-cmd="hmore"]'));
+  const item = qa('#cmdMenu .fitem').find(d => d.textContent.indexOf('正文') !== -1);
+  assert.ok(item, 'H▾ 菜单含「正文」项');
+  click(item); // 递归未修时此处抛 RangeError
+  assert.ok(q('#editor > p'), '段落保持为段落（幂等）');
+  assert.strictEqual(q('#editor > p').textContent, '普通正文段。', '内容不变');
+});
+
+test('复查#3：cmdMenu / zoomPanel / fontPanel 点击面板外自动关闭', () => {
+  win.__onMessage({ data: { type: 'init', text: '面板关闭测试。\n', settings: {} } });
+  caretIn(qa('#editor > p')[0], true);
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-home'));
+  click(q('#rp-home .rbtn[data-cmd="hmore"]'));
+  assert.ok(q('#cmdMenu'), 'cmdMenu 已打开');
+  doc.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true }));
+  assert.ok(!q('#cmdMenu'), '点击面板外 → cmdMenu 关闭');
+  // zoomPanel：字号下拉
+  click(q('#rp-home .rbtn[data-cmd="bold"]')); // 先确保页签激活态无碍
+  const sizeDdl = qa('#rp-home .fddl')[2];
+  click(sizeDdl);
+  assert.ok(q('#zoomPanel'), 'zoomPanel 已打开');
+  doc.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true }));
+  assert.ok(!q('#zoomPanel'), '点击面板外 → zoomPanel 关闭');
+});
+
+test('复查#5：AI「自定义指令」——选区在弹窗前捕获，确认后随请求发送', async () => {
+  win.__onMessage({ data: { type: 'init', text: '自定义指令句子。\n', settings: {} } });
+  const p = qa('#editor > p')[0];
+  const r = doc.createRange(); r.selectNodeContents(p.firstChild);
+  sel().removeAllRanges(); sel().addRange(r);
+  doc.dispatchEvent(new win.Event('selectionchange'));
+  click(qa('#ftBar .rbtn').find(b => b.dataset.cmd === 'aiMenu'));
+  click(qa('#aiMenu .ctx-item').find(d => d.dataset.ai === 'custom'));
+  assert.strictEqual(q('.dlgMask').style.display, 'flex', '指令对话框打开');
+  const input = q('.dlg [data-field="instruction"]');
+  assert.ok(input, '指令输入框存在');
+  input.value = '更正式一点';
+  click(qa('.dlg .foot .btn')[1]); // 确定
+  await wait(5); // dialog Promise 微任务
+  const aiMsg = postMessages().filter(m => m.type === 'ai').pop();
+  assert.ok(aiMsg && aiMsg.cmd === 'custom' && aiMsg.instruction === '更正式一点', 'custom 请求已发出');
+  assert.strictEqual(aiMsg.text, '自定义指令句子。', '选中文本随请求发送（弹窗夺选区后仍为捕获值）');
+});
+
+test('复查#11：源码模式下点行内格式按钮 → 给出切换模式提示（原静默无效）', () => {
+  win.__onMessage({ data: { type: 'init', text: '模式门控测试。\n', settings: {} } });
+  click(q('.rbtn[data-cmd="mSource"]'));
+  click(qa('.rtab').find(t => t.dataset.panel === 'rp-home'));
+  click(q('#rp-home .rbtn[data-cmd="bold"]'));
+  assert.ok(q('#toast').textContent.indexOf('所见即所得') !== -1, 'toast 提示切换模式：' + q('#toast').textContent);
+  click(q('.rbtn[data-cmd="mWysiwyg"]'));
 });
 
 chain.then(() => {
