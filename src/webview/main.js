@@ -113,6 +113,7 @@
       sb.textContent = '📄 ' + (PAGE_SIZE_LABEL[c.size] || c.size) +
         (c.size === 'custom' ? ' · ' + c.customWidth + 'px' : '');
     }
+    schedulePaperFit(); // 纸张基准宽变了（fit/A4/自定义）→ 重算内容自适应
   }
   function setPage(key, value) {
     settings.page = settings.page || {};
@@ -120,6 +121,55 @@
     applyPageSettings();
     vscode.postMessage({ type: 'saveSetting', section: 'page', key: key, value: value });
     buildPagePanel(); // 刷新面板高亮
+  }
+
+  // ================= 纸张宽度自适应内容（宽表格撑破页面背景修复） =================
+  // --page-width 只以 max-width 封顶：多列表格的 min-content 超过纸张时表格溢出白纸、
+  // 背景不延伸。这里在「设定纸张宽」下量出内容实际需要宽度（表格右缘为主，scrollWidth 兜底），
+  // 以内联 min-width 撑宽纸张（CSS 中 min-width 优先于 max-width），白纸始终包住内容；
+  // 删列/删表后回落到设定宽度。超出可视区时由 #editorWrap overflow:auto 横向滚动（自适应屏幕）。
+  // 同一机制作用于分屏预览 .pv-inner；--page-need 同步到 #main 供面包屑跟随实际纸张宽。
+  let paperFitRaf = 0;
+  let paperMo = null;
+  function fitHostPaper(el) {
+    if (!el || !el.clientWidth) { return false; } // display:none / jsdom 无布局：跳过
+    const had = el.style.minWidth;
+    if (had) { el.style.minWidth = ''; } // 先回到设定纸张宽再量，才能发现内容收窄
+    let need = el.scrollWidth; // 无溢出时 = clientWidth
+    const base = el.getBoundingClientRect();
+    let tRight = 0;
+    const tds = el.querySelectorAll('table');
+    for (let i = 0; i < tds.length; i++) {
+      const r = tds[i].getBoundingClientRect();
+      if (r.width && base.width) { tRight = Math.max(tRight, r.right - base.left); }
+    }
+    if (tRight) { // 表格右缘 + 右内边距：不受引擎 scrollWidth 是否计入右内边距差异影响
+      const cs = getComputedStyle(el);
+      need = Math.max(need, tRight + (parseFloat(cs.paddingRight) || 0));
+    }
+    if (need > el.clientWidth + 1) { el.style.minWidth = Math.ceil(need) + 'px'; return true; }
+    return !!had; // 撑宽值有变（含清除）→ 需要同步 --page-need
+  }
+  function fitPaperWidth() {
+    if (!editor) { return; }
+    if (paperMo) { paperMo.disconnect(); } // 自身写 style 期间断开观察，防止「量→写→再触发」循环
+    const paperGrew = fitHostPaper(editor);
+    fitHostPaper($('.pv-inner'));
+    const host = $('#main') || editor.parentElement;
+    if (paperGrew && editor.style.minWidth) { host.style.setProperty('--page-need', editor.style.minWidth); }
+    else { host.style.removeProperty('--page-need'); }
+    if (paperMo) { observePaperMutations(); }
+  }
+  function schedulePaperFit() {
+    if (paperFitRaf) { return; }
+    paperFitRaf = requestAnimationFrame(() => { paperFitRaf = 0; fitPaperWidth(); });
+  }
+  function observePaperMutations() {
+    // 内容或影响宽度的属性变化（增删列/输入/粘贴/图片加载换 src 等）→ 重算纸张
+    paperMo.observe(editor, {
+      childList: true, subtree: true, characterData: true,
+      attributes: true, attributeFilter: ['style', 'colspan', 'data-align', 'src']
+    });
   }
   function buildPagePanel() {
     if (!pagePanel) { return; }
@@ -390,7 +440,7 @@
       '<span class="seg clickable" id="sbLang" title="界面语言 / UI language">🌐 中文</span>',
       '<span class="seg clickable" id="sbPage" title="页面设置…（纸张尺寸 / 背景色 / 条纹）">📄 适应屏幕</span>',
       '<span class="seg clickable" id="sbMode" title="点击切换模式">所见即所得 ▾</span>',
-      '<span class="seg">Markdown Word v1.9.2</span>'
+      '<span class="seg">Markdown Word v1.9.3</span>'
     ].join('');
     app.appendChild(sb);
     $('#sbMode').onclick = () => setMode(mode === 'wysiwyg' ? 'source' : mode === 'source' ? 'split' : 'wysiwyg');
@@ -609,6 +659,7 @@
     editor.appendChild(MD.blocksToDom(MD.parse(text)));
     resolveImages();
     updateStatus();
+    schedulePaperFit(); // 新文档内容宽度可能超出纸张（宽表格）→ 立即重算
   }
   function currentText() {
     if (mode === 'wysiwyg') { return serialize(); }
@@ -1616,6 +1667,7 @@
     stack.push('var(--vscode-editor-font-family, sans-serif)');
     editor.style.fontFamily = stack.join(', ');
     $('#sbFont') && ($('#sbFont').textContent = '🅰 ' + (latin || '跟随') + ' / ' + (cjk || '跟随'));
+    schedulePaperFit(); // 字体变化 → 列宽/断行变化 → 重算纸张宽
   }
   function setFont(key, value) {
     settings.editor = settings.editor || {};
@@ -2323,6 +2375,7 @@
     const pv = $('.pv-inner'); if (pv) { pv.style.fontSize = (15 * zoom / 100).toFixed(1) + 'px'; }
     $$('.fddl').forEach(f => { if (f.textContent.indexOf('%') !== -1) { f.textContent = zoom + '%'; } });
     if (zoomSizeDdl) { zoomSizeDdl.textContent = (15 * zoom / 100).toFixed(1).replace(/\.0$/, '') + ' ▾'; }
+    schedulePaperFit(); // 字号变化 → 表格 min-content 变化 → 重算纸张宽
   }
   function setZoom(v) {
     const before = zoom;
@@ -2841,11 +2894,13 @@
     });
     if (m === 'split') { updatePreview(); srcTextarea.focus(); }
     if (m === 'source') { srcTextarea.focus(); }
+    schedulePaperFit(); // 模式切换后可见区域变化（wysiwyg/分屏预览）→ 重算
     updateStatus();
   }
   function updatePreview() {
     $('.pv-inner').innerHTML = MD.blocksToHtml(MD.parse(srcTextarea.value));
     resolvePreviewImages();
+    schedulePaperFit(); // 预览内容变化 → 预览纸张同步自适应宽表格
   }
   function resolvePreviewImages() {
     const rels = [];
@@ -2965,6 +3020,14 @@
     // 光标保持：记录编辑区选区 + 防止 Ribbon/弹层夺走选区（真实浏览器行为）
     trackSelection();
     guardLayersFromStealingSelection();
+
+    // 纸张宽度自适应内容：内容变更（MutationObserver）+ 视口/面板尺寸变化（ResizeObserver）
+    // + 图片等资源异步加载完成后（load 捕获）→ rAF 防抖重算
+    paperMo = new MutationObserver(schedulePaperFit);
+    observePaperMutations();
+    if (typeof ResizeObserver !== 'undefined') { new ResizeObserver(schedulePaperFit).observe(editorWrap); }
+    editor.addEventListener('load', schedulePaperFit, true);
+    preview.addEventListener('load', schedulePaperFit, true);
 
     // 源码模式：在 VS Code 原生编辑器中打开（Beside 并排，不替换本编辑器）
     const nativeBtn = $('#openNativeBtn');

@@ -60,6 +60,15 @@ body {
   font-size: 15px; line-height: 1.75;
   font-family: 'Segoe UI', 'Microsoft YaHei', var(--vscode-editor-font-family, sans-serif);
 }
+/* 纸张宽度自适应内容（宽表格）：--page-width 只封顶（max-width），多列表格的 min-content
+   超过纸张时由 JS 量出实际需要宽度，以内联 min-width 撑宽纸张（min-width 优先于 max-width），
+   并把 --page-need 同步到 #main 供面包屑等跟随；内容收窄后 JS 清除回落 */
+#editor { max-width: var(--page-width, 760px); }
+/* 段落长 token（超长 URL 等）可断行：不让单个词把纸张撑到夸张宽度 */
+#editor, #preview .pv-inner { overflow-wrap: anywhere; }
+/* 表格单元格例外：保持 normal 使列 min-content 完整生效——宽表格靠撑宽纸张呈现，
+   而不是被压成每列一两个字（正好覆盖 td/th 继承） */
+#editor th, #editor td, #preview th, #preview td { overflow-wrap: normal; }
 body.vscode-dark #editor { box-shadow: 0 2px 12px rgba(0,0,0,.5); }
 
 /* 块级样式 */
@@ -235,8 +244,8 @@ kbd {
 #emojiGrid span:hover, #emojiRecent span:hover { background: var(--vscode-list-hoverBackground, #eef2ff); }
 #emojiSearch { width: 100%; margin-bottom: 8px; border: 1px solid var(--vscode-input-border, #cbd5e1); border-radius: 6px; padding: 4px 8px; background: var(--vscode-input-background, #fff); color: var(--vscode-input-foreground, inherit); font: inherit; font-size: 12px; outline: none; }
 
-/* ============ 源码 / 分屏模式 ============ *//* 纸张宽度变量由 JS 设置在 #main 上：所见即所得纸张与源码模式纸张共用，保证两种模式尺寸一致 */
-#editor { max-width: var(--page-width, 760px); }
+/* ============ 源码 / 分屏模式 ============ *//* 纸张宽度变量由 JS 设置在 #main 上：所见即所得纸张与源码模式纸张共用，保证两种模式尺寸一致
+   （--page-width 规则已在主区 #editor 处声明） */
 /* flex:1 必须在基础规则上：#main 是 flex 行容器，缺了它 sourceArea 会按内容塌缩（源码模式窄条 bug）；
    display:none 时不参与布局，wysiwyg 模式下无副作用 */
 #sourceArea { display: none; flex: 1; flex-direction: column; min-width: 0; }
@@ -486,7 +495,8 @@ sup.md-fn, #editor .md-fn-def sup, #preview .md-fn-def sup {
 /* ============ F14 面包屑 ============ */
 #crumb {
   position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 4px;
-  max-width: var(--page-width, 760px); margin: 0 auto; padding: 6px 8px;
+  /* 跟随纸张实际宽度：--page-need 为宽表格撑宽后的实际值（由 JS 维护，缺省 0） */
+  max-width: max(var(--page-width, 760px), var(--page-need, 0px)); margin: 0 auto; padding: 6px 8px;
   font-size: 11.5px; color: var(--vscode-descriptionForeground, #64748b);
   background: var(--vscode-editorGroup-background, #e9edf3);
 }

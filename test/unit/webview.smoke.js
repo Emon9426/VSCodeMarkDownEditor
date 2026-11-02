@@ -96,6 +96,9 @@ global.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 Object.defineProperty(global, 'navigator', { value: { clipboard: { writeText() {} } }, configurable: true });
 global.addEventListener = (t, fn) => { winListeners[t] = fn; };
 global.removeEventListener = () => {};
+// 纸张宽度自适应用到的浏览器 API（Node 侧替身：空实现即可，布局量测由 jsdom/真机覆盖）
+global.requestAnimationFrame = fn => setTimeout(fn, 0);
+global.MutationObserver = function () { this.observe = () => {}; this.disconnect = () => {}; };
 global.Event = function () {};
 global.acquireVsCodeApi = () => ({
   postMessage: m => postMessages.push(m),

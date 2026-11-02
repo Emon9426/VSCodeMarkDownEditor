@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.9.3（2026-11-03）
+
+纸张宽度自适应内容（用户报告：Markdown 表格列数很多时，显示效果中横向表格超出页面范围，页面背景不跟随延伸）：**白色纸张按内容实际需要撑宽、始终包住宽表格，删列后回落；超出屏幕时横向滚动，页面背景自适应内容与屏幕分辨率**。
+
+- **根因**：纸张宽度由 `--page-width` 以 `max-width` 封顶（适应屏幕 = min(100%, 1200px)、A4 = 794px 等），只封顶不随内容增长——多列表格各列 min-content 之和（每列 min-width 40px + 内边距）超过纸张宽后，表格作为不可收缩元素溢出白纸画到灰色工作区上，背景不跟随
+- **自适应机制**：webview 在「设定纸张宽」下量测内容实际需要宽度（表格右缘为主、`scrollWidth` 兜底，不受引擎是否计入右内边距的差异影响），以内联 `min-width` 撑宽纸张（CSS 中 min-width 优先于 max-width）；量测前先清除上次值回到基准再量，才能发现内容收窄；「适应屏幕」与 A3–Legal / 自定义等全部纸张模式同样生效
+- **自适应屏幕分辨率**：纸张超过可视区时 `#editorWrap`（overflow:auto）出现横向滚动条；窗口 / 编辑器面板拖拽经 ResizeObserver 重算（窄屏 700px 实测：纸张随内容撑宽 + 横滚）
+- **配套决策**：① 段落超长不可断文本（超长 URL）`overflow-wrap:anywhere` 可断行——避免单个链接把纸张撑到夸张宽度；② 表格单元格保持 `normal`——列 min-content 完整生效，宽表靠撑宽纸张呈现而非被压成每列一两个字；③ 代码块 / Mermaid 维持内部横向滚动不撑宽纸张（现状即如此）；④ 顶部面包屑宽度跟随纸张实际宽（`--page-need` 同步到 #main）；⑤ 分屏模式预览 `.pv-inner` 同样自适应
+- **触发时机**：文档加载 / 表格增删列与输入粘贴（MutationObserver + rAF 防抖，写样式期间断开观察防自触发循环）/ 窗口与面板尺寸变化（ResizeObserver）/ 字号缩放 / 字体切换 / 页面设置切换 / 图片异步加载完成（load 捕获）
+- 测试 255 项（+15）：pagefit 15 项——CSS 静态审计 4 项（--page-width 封顶 / anywhere 与 td·th normal 例外 / 面包屑 max(--page-width, --page-need)）、main.js 静态审计 5 项（min-width 写入与先清后量 / 六类触发点齐全 / 观察器防循环 / ResizeObserver 守卫）、jsdom 布局模拟 6 项（stub clientWidth·scrollWidth 驱动真实执行链：宽表撑宽 1200px / --page-need 同步 / 删表回落清除 / 无溢出不撑 / 分屏预览 980px / 无布局环境防御性跳过）
+- **Chromium 真机布局验证**（test/e2e/pagefit-e2e.html，引用真实生产代码）：24 列不可压缩表格 7 场景全过——fit 模式纸张 2681px 包住表格右缘 2625px（covered ✓ 横滚 ✓）；A4 模式同样撑宽包住；删表回落 1200px 基准；300 字符超长 URL 不撑宽（断行）；分屏预览 .pv-inner 2437px 包住；窄视口 700px 自适应（padding 24px 档位）；缺陷复现对照（清 min-width 后表格溢出白纸 overflow=true，即用户报告的现象）——修复前后截图存 test/e2e/shots/pagefit-before-bug.png / pagefit-after-fixed.png
+
 ## 1.9.2（2026-10-20）
 
 选区浮动工具条修复 + 全菜单深度复查（GitHub [issue #6](https://github.com/Emon9426/VSCodeMarkDownEditor/issues/6)，用户：选中文本后的浮动菜单按钮全部无效或功能错乱）：**修复 v1.9.0 引入的双执行回归，并对全部菜单（浮动条 / Ribbon 四页签 / 表格条 / 右键 / 斜杠 / 状态栏）逐按钮复查，修复独立审查发现的 11 处缺陷**。
