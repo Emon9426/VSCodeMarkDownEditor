@@ -218,7 +218,7 @@ test('连续命令压力：×30 插表/插行/删行 不崩溃且结构合法', 
     click(q('#rp-tbl .rbtn[data-cmd="delRow"]'));
   });
   const rowsPer = qa('#editor > table').map(t => t.querySelectorAll('tbody tr').length);
-  assert.ok(rowsPer.every(n => n === 3), '每表 2+2-1=3 行：' + rowsPer.join(','));
+  assert.ok(rowsPer.every(n => n === 2), '每表 1+2-1=2 数据行（总行数含表头语义）：' + rowsPer.join(','));
   // 序列化往返合法
   const md = win.MdCore.domToMarkdown(q('#editor'));
   const re = win.MdCore.parse(md);
