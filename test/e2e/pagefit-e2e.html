@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>纸张宽度自适应内容 — 真机布局验证</title>
+<!-- 直接引用真实源文件（非快照）：样式 / 渲染引擎 / webview 主逻辑均为生产代码 -->
+<link rel="stylesheet" href="../../src/webview/style.css">
+<style>
+  /* 宿主（VS Code webview）注入的变量在浏览器缺失 → style.css 的回退值生效，不影响布局验证 */
+  html, body { height: 100%; }
+  #harnessBar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 999; display: flex; gap: 8px; align-items: center;
+    padding: 6px 12px; font-size: 12px; background: #0f172a; color: #e2e8f0;
+  }
+  #harnessBar button { font-size: 12px; padding: 3px 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="harnessBar">
+  <b>场景：</b>
+  <button data-sc="wide">① 宽表(fit)</button>
+  <button data-sc="a4">② 宽表(A4)</button>
+  <button data-sc="narrow">③ 删表回落</button>
+  <button data-sc="url">④ 超长URL</button>
+  <button data-sc="split">⑤ 分屏预览</button>
+  <button id="btnBugRepro">⑥ 复现旧缺陷(清 min-width)</button>
+  <span id="harnessInfo"></span>
+</div>
+<script>
+  // —— 宿主 API 桩：postMessage 捕获到 __posted；驱动用真实 MessageEvent 派发到生产监听器 ——
+  window.__posted = [];
+  window.acquireVsCodeApi = function () {
+    return {
+      postMessage: function (m) { window.__posted.push(m); },
+      setState: function () {}, getState: function () { return {}; }
+    };
+  };
+  // —— 自动化环境兜底：嵌入式/被遮挡浏览器里原生 rAF 可能长期不回调（渲染节流），
+  //    双通道竞速（原生 rAF + 120ms 定时器，先到先得、去重）：渲染正常时与原生行为一致，
+  //    节流时保证回调活性。仅影响本验证页，不影响插件生产代码（真实 VS Code webview 可见时 rAF 正常）。 ——
+  (function () {
+    var nativeRaf = window.requestAnimationFrame.bind(window);
+    var nativeCancel = window.cancelAnimationFrame.bind(window);
+    var seq = 0; var live = {};
+    window.requestAnimationFrame = function (fn) {
+      var id = ++seq; var done = false;
+      var nid = 0, tid = 0;
+      var run = function (t) {
+        if (done || !live[id]) { return; }
+        done = true; delete live[id];
+        nativeCancel(nid); clearTimeout(tid);
+        fn(t && t > 0 ? t : performance.now());
+      };
+      live[id] = true;
+      nid = nativeRaf(run);
+      tid = setTimeout(function () { run(0); }, 120);
+      return id;
+    };
+    window.cancelAnimationFrame = function (id) { delete live[id]; };
+  })();
+</script>
+<script src="../../src/markdown/highlight.js"></script>
+<script src="../../src/markdown/math.js"></script>
+<script src="../../src/markdown/mermaid.js"></script>
+<script src="../../src/markdown/core.js"></script>
+<script src="../../src/webview/main.js"></script>
+<script>
+  // —— 场景驱动 + 量测（结果写入 #harnessInfo 并存 window.__last，供自动化断言/截图） ——
+  function mdTable(cols) {
+    const head = [], sep = [], row = [];
+    // 数据用不可断拉丁 token（真实场景：编号/单词不可压缩）→ 列 min-content 完整生效
+    for (let i = 1; i <= cols; i++) { head.push('列' + i); sep.push('---'); row.push('Item_' + String(i).padStart(5, '0')); }
+    return ['# 宽表验证', '', '| ' + head.join(' | ') + ' |', '| ' + sep.join(' | ') + ' |', '| ' + row.join(' | ') + ' |'].join('\n');
+  }
+  var SCENARIOS = {
+    wide:   { text: mdTable(24), settings: {} },       // 24 列 ≈ 1750px > fit 上限 1200 → 溢出路径
+    a4:     { text: mdTable(24), settings: { page: { size: 'a4' } } },
+    narrow: { text: '# 回落验证\n\n普通段落，无表格。\n', settings: { page: { size: 'fit' } } },
+    url:    { text: '# 超长链接\n\n请看这个链接 https://example.com/' + 'a'.repeat(300) + ' 结束。\n', settings: { page: { size: 'fit' } } },
+    split:  { text: mdTable(24), settings: { defaultMode: 'split' } }
+  };
+  window.__run = function (sc) {
+    var s = SCENARIOS[sc];
+    window.__posted.length = 0;
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'init', text: s.text, settings: JSON.parse(JSON.stringify(s.settings)) } }));
+    return new Promise(function (resolve) { // 等 rAF 量测落地（2 帧足够）
+      requestAnimationFrame(function () { requestAnimationFrame(function () { resolve(window.__measure(sc)); }); });
+    });
+  };
+  window.__measure = function (sc) {
+    var editor = document.querySelector('#editor');
+    var pv = document.querySelector('.pv-inner');
+    var wrap = document.querySelector('#editorWrap');
+    var target = (sc === 'split') ? pv : editor;
+    var tbl = target.querySelector('table');
+    var er = target.getBoundingClientRect();
+    var tr = tbl ? tbl.getBoundingClientRect() : null;
+    var cs = getComputedStyle(target);
+    var out = {
+      scenario: sc,
+      paperWidth: +er.width.toFixed(1),
+      paperMinWidth: target.style.minWidth || '(none)',
+      pageNeed: document.querySelector('#main').style.getPropertyValue('--page-need') || '(none)',
+      wrapScrollable: wrap ? wrap.scrollWidth > wrap.clientWidth + 1 : null,
+      tableRight: tr ? +tr.right.toFixed(1) : null,
+      paperRight: +er.right.toFixed(1),
+      paddingRight: parseFloat(cs.paddingRight),
+      covered: tr ? (er.right - parseFloat(cs.paddingRight)) >= tr.right - 1 : null,
+      overflow: tr ? tr.right > er.right + 0.5 : null
+    };
+    var info = document.querySelector('#harnessInfo');
+    info.textContent = JSON.stringify(out);
+    window.__last = out;
+    return out;
+  };
+  document.querySelector('#harnessBar').addEventListener('click', function (e) {
+    var sc = e.target.getAttribute && e.target.getAttribute('data-sc');
+    if (sc) { window.__run(sc); }
+    if (e.target.id === 'btnBugRepro') { // 模拟修复前：清掉自适应 → 表格溢出白纸
+      document.querySelector('#editor').style.minWidth = '';
+      window.__measure(window.__last ? window.__last.scenario : 'wide');
+    }
+  });
+</script>
+</body>
+</html>

@@ -16,3 +16,4 @@ require('./bench.test.js');
 require('./webview.jsdom.test.js');
 require('./host.outline.test.js');
 require('./ui.stability.test.js');
+require('./pagefit.test.js'); // 纸张宽度自适应内容（宽表格）：静态审计 + jsdom 布局模拟
